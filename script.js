@@ -129,19 +129,44 @@
         return;
       }
 
-      var out = getAdvice(sedentary, sleep, hr, steps);
-      if (!out) {
-        showError(errEl, '没有匹配到规则，请检查输入。');
+      /* 0.5 秒“分析中…”状态：防止连点，也让结果显得严谨 */
+      btn.disabled = true;
+      btn.classList.add('is-loading');
+      btn.textContent = '分析中…';
+
+      setTimeout(function () {
+        var out = getAdvice(sedentary, sleep, hr, steps);
+        if (!out) {
+          showError(errEl, '没有匹配到规则，请检查输入。');
+        } else {
+          activityEl.textContent = out.advice;
+          keyEl.textContent = out.key;
+          matchEl.textContent = out.fallback
+            ? '匹配：兜底规则（同久坐、同睡眠、心率正常行的活动建议 + 固定“今天最该做”）'
+            : '匹配：规则表第 ' + out.row + ' 行';
+          result.hidden = false;
+          result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        btn.disabled = false;
+        btn.classList.remove('is-loading');
+        btn.textContent = '生成今天的建议';
+      }, 500);
+    });
+
+    /* 一键复制：把两段建议复制到剪贴板 */
+    document.getElementById('copyBtn').addEventListener('click', function () {
+      var advice = activityEl.textContent;
+      var key = keyEl.textContent;
+      if (!advice && !key) {
+        showToast('还没有结果，先点“生成今天的建议”');
         return;
       }
-
-      activityEl.textContent = out.advice;
-      keyEl.textContent = out.key;
-      matchEl.textContent = out.fallback
-        ? '匹配：兜底规则（同久坐、同睡眠、心率正常行的活动建议 + 固定“今天最该做”）'
-        : '匹配：规则表第 ' + out.row + ' 行';
-      result.hidden = false;
-      result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      var text = '【活动建议】' + advice + '\n【今天最该做的一件事】' + key;
+      copyText(text).then(
+        function () { showToast('已复制'); },
+        function () { showToast('复制失败，请手动选中文字复制'); }
+      );
     });
 
     document.querySelector('.form-card').addEventListener('keydown', function (e) {
@@ -154,6 +179,40 @@
   function showError(errEl, msg) {
     errEl.textContent = msg;
     errEl.hidden = false;
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text);
+    }
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        var ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (ok) { resolve(); } else { reject(new Error('copy failed')); }
+      } catch (e) {
+        document.body.removeChild(ta);
+        reject(e);
+      }
+    });
+  }
+
+  function showToast(msg) {
+    var toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(function () {
+      toast.classList.remove('show');
+    }, 1600);
   }
 
   if (typeof document !== 'undefined') {
