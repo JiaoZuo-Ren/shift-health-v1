@@ -29,6 +29,9 @@
 
   var FALLBACK_KEY = '今天最该做：中午闭眼休息10分钟，不安排高强度。';
 
+  /* 卡片底部展示的网址（部署后改成你的正式地址） */
+  var SITE_URL = 'jiaozuo-ren.github.io';
+
   /* ================= 规则表（20行，与定稿表一字不差） ================= */
   var RULES = [
     { id: 1,  sedentary: 'gt6',  sleep: 'lt6',   hr: 'high',   steps: 'lt3000',     advice: '今天久坐偏多、活动偏少。不建议直接去跑步，先每坐50分钟站起来2分钟，晚饭后散步15分钟；同时睡眠偏少、心率偏高，今天不适合高强度运动。优先补觉，白天加一次10分钟闭眼休息。', key: '今天最该做：中午闭眼休息10分钟，不安排高强度。' },
@@ -191,8 +194,10 @@
     var appDesc = document.getElementById('appDesc');
     var appSub = document.getElementById('appSub');
     var currentMode = 'day';
+    var lastOut = null;
+    var lastVitality = 0;
 
-    btn.addEventListener('click', function () {
+    document.getElementById('generateBtn').addEventListener('click', function () {
       errEl.hidden = true;
 
       var sedentaryRaw = document.getElementById('sedentary').value.trim();
@@ -234,6 +239,8 @@
           activityEl.textContent = out.advice;
           keyEl.textContent = out.key;
           var vitality = computeVitality(sedentary, sleep, hr, steps);
+          lastOut = out;
+          lastVitality = vitality;
           vitalityFill.style.width = vitality + '%';
           vitalityScore.textContent = vitality + ' / 100';
           vitalityTrack.setAttribute('aria-valuenow', vitality);
@@ -262,6 +269,58 @@
         function () { showToast('已复制'); },
         function () { showToast('复制失败，请手动选中文字复制'); }
       );
+    });
+
+    /* 生成今日数据卡片：弹出预览 → 截图下载 PNG → 手动关闭 */
+    var shareOverlay = document.getElementById('shareOverlay');
+    var shareCard = document.getElementById('shareCard');
+    document.getElementById('shareBtn').addEventListener('click', function () {
+      if (!lastOut) {
+        showToast('还没有结果，先点“生成今天的建议”');
+        return;
+      }
+      if (typeof html2canvas === 'undefined') {
+        showToast('分享功能需要联网加载，请检查网络后重试');
+        return;
+      }
+      if (shareOverlay.classList.contains('show')) return;
+      var shareBtn = document.getElementById('shareBtn');
+      shareBtn.disabled = true;
+      shareBtn.textContent = '生成中…';
+      document.getElementById('shareMode').textContent = currentMode === 'day' ? '久坐上班族' : '夜班/倒时差';
+      document.getElementById('shareScore').textContent = lastVitality;
+      document.getElementById('shareAdvice').textContent = lastOut.advice;
+      document.getElementById('shareKey').textContent = lastOut.key;
+      var now = new Date();
+      document.getElementById('shareDate').textContent = now.getFullYear() + '年' + (now.getMonth() + 1) + '月' + now.getDate() + '日';
+      document.getElementById('shareUrl').textContent = SITE_URL;
+
+      /* 先让卡片显示在屏幕上再截图：离屏元素 html2canvas 会截失败 */
+      shareOverlay.classList.add('show');
+      html2canvas(shareCard, { scale: 2, backgroundColor: '#16352a' }).then(function (canvas) {
+        var rounded = roundRectCanvas(canvas, 48);
+        var a = document.createElement('a');
+        a.download = '今日活动建议卡片.png';
+        a.href = rounded.toDataURL('image/png');
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        shareBtn.disabled = false;
+        shareBtn.textContent = '生成今日数据卡片';
+        showToast('图片已下载，点 × 关闭预览');
+      }).catch(function () {
+        shareBtn.disabled = false;
+        shareBtn.textContent = '生成今日数据卡片';
+        showToast('自动生成失败，可直接截图预览卡片保存');
+      });
+    });
+
+    /* 预览卡片：点 × 或点空白处关闭 */
+    document.getElementById('shareClose').addEventListener('click', function () {
+      shareOverlay.classList.remove('show');
+    });
+    shareOverlay.addEventListener('click', function (e) {
+      if (e.target === shareOverlay) shareOverlay.classList.remove('show');
     });
 
     document.querySelector('.form-card').addEventListener('keydown', function (e) {
@@ -306,7 +365,7 @@
       errEl.hidden = true;
     }
 
-    modeSwitchBtn.addEventListener('click', function () {
+    document.getElementById('modeSwitchBtn').addEventListener('click', function () {
       setMode(currentMode === 'day' ? 'night' : 'day');
     });
 
@@ -340,6 +399,32 @@
         reject(e);
       }
     });
+  }
+
+  /* 把截图裁成圆角（PNG 四角透明，任何背景都好看） */
+  function roundRectCanvas(canvas, radius) {
+    var out = document.createElement('canvas');
+    out.width = canvas.width;
+    out.height = canvas.height;
+    var ctx = out.getContext('2d');
+    ctx.drawImage(canvas, 0, 0);
+    var w = out.width;
+    var h = out.height;
+    var r = Math.min(radius, w / 2, h / 2);
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.beginPath();
+    ctx.moveTo(r, 0);
+    ctx.lineTo(w - r, 0);
+    ctx.quadraticCurveTo(w, 0, w, r);
+    ctx.lineTo(w, h - r);
+    ctx.quadraticCurveTo(w, h, w - r, h);
+    ctx.lineTo(r, h);
+    ctx.quadraticCurveTo(0, h, 0, h - r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.closePath();
+    ctx.fill();
+    return out;
   }
 
   function showToast(msg) {

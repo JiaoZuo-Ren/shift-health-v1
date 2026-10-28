@@ -355,3 +355,141 @@ button:disabled {
     padding: 26px 16px;
   }
 }
+
+/* ================= 分享卡片（离屏截图 → 预览展示 → 手动关闭） ================= */
+.share-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 25, 20, 0.55);
+  display: none;
+  padding: 24px;
+  overflow: auto;
+  z-index: 40;
+}
+
+.share-overlay.show {
+  display: flex;
+}
+
+.share-close {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  font-size: 26px;
+  line-height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  color: #22302a;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  z-index: 41;
+}
+
+.share-close:hover {
+  background: #fff;
+}
+
+.share-card {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  width: 600px;
+  box-sizing: border-box;
+  background: linear-gradient(160deg, #16352a 0%, #1f5c43 55%, #2f855a 100%);
+  color: #fff;
+  padding: 46px 40px 40px;
+  font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+  border-radius: 24px;
+}
+
+.share-overlay.show .share-card {
+  position: relative;
+  left: auto;
+  top: auto;
+  margin: auto;
+  max-width: 600px;
+}
+
+.share-card-inner {
+  text-align: center;
+}
+
+.share-mode {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: 3px;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.share-title {
+  margin: 10px 0 30px;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.share-vitality {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+}
+
+.share-score {
+  font-size: 72px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.share-score-unit {
+  font-size: 20px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.share-vitality-label {
+  margin: 10px 0 0;
+  font-size: 14px;
+  letter-spacing: 4px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.share-block {
+  margin-top: 22px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 16px;
+  padding: 18px 22px;
+  text-align: left;
+}
+
+.share-block h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: #ffd98a;
+  border-left: 4px solid #ffd98a;
+  padding-left: 10px;
+}
+
+.share-block p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.share-date {
+  margin: 30px 0 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.share-url {
+  margin: 6px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #ffd98a;
+}

@@ -62,6 +62,7 @@
         <p id="keyAdvice"></p>
       </div>
       <button type="button" id="copyBtn" class="copy-btn">📋 复制建议</button>
+      <button type="button" id="shareBtn" class="copy-btn">生成今日数据卡片</button>
     </section>
 
     <footer class="app-footer">
@@ -72,7 +73,34 @@
     </footer>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <!-- 分享卡片：离屏完成截图下载 → 弹出预览 → 手动关闭 -->
+    <div id="shareOverlay" class="share-overlay" aria-hidden="true">
+      <button type="button" id="shareClose" class="share-close" aria-label="关闭预览">×</button>
+      <div id="shareCard" class="share-card">
+        <div class="share-card-inner">
+          <p class="share-mode" id="shareMode"></p>
+          <p class="share-title">今日活动建议</p>
+          <div class="share-vitality">
+            <span class="share-score" id="shareScore">--</span>
+            <span class="share-score-unit">/ 100</span>
+          </div>
+          <p class="share-vitality-label">今日活力值</p>
+          <div class="share-block">
+            <h3>活动建议</h3>
+            <p id="shareAdvice"></p>
+          </div>
+          <div class="share-block">
+            <h3>今天最该做的一件事</h3>
+            <p id="shareKey"></p>
+          </div>
+          <p class="share-date" id="shareDate"></p>
+          <p class="share-url" id="shareUrl"></p>
+        </div>
+      </div>
+    </div>
   </main>
-  <script src="script.js?v=3"></script>
+  <script src="html2canvas.min.js" onerror="this.onerror=null;this.src='https://fastly.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'"></script>
+  <script src="script.js?v=4"></script>
 </body>
 </html>
