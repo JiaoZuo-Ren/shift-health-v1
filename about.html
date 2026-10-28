@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>关于 - 今日活动建议</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f7d5b'/%3E%3Cpath d='M8 17h4l2-6 3 10 2-4h5' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+</head>
+<body>
+  <main class="app">
+    <header class="app-header">
+      <h1>关于这个工具</h1>
+      <p>今日活动建议，是一个只做固定规则判断的小工具。</p>
+    </header>
+
+    <section class="about-card">
+      <h2>这个工具是干嘛的</h2>
+      <p>它是给久坐人群的“数据翻译”。久坐时长、睡眠时长、静息心率、每日步数，是久坐人群每天最常碰到的四个数字。单看一个数字往往看不出问题，四个数字放在一起，才能看出今天该怎么活动。</p>
+      <p>这个工具做的事，就是把四个数字翻译成两句人话：一句是今天怎么活动，一句是今天最该做的一件事。判断完全按固定规则表走，不接 AI，不猜，不编。</p>
+    </section>
+
+    <section class="about-card">
+      <h2>判断规则</h2>
+      <p>规则表按久坐、睡眠、心率、步数四个维度判断，一共 20 行。几条核心规则：</p>
+      <ul class="rule-list">
+        <li>久坐超过 6 小时且步数低于 3000：久坐偏多、活动偏少。不建议直接去跑步，先每坐 50 分钟站起来 2 分钟，晚饭后散步 15 分钟。</li>
+        <li>久坐超过 6 小时但步数达到 6000：久坐多但活动量够，保持。注意每坐 50 分钟站起来一次，别连续坐满两小时。</li>
+        <li>睡眠少于 6 小时且心率偏高（静息心率大于 70）：今天不适合高强度运动。优先补觉，白天加一次 10 分钟闭眼休息。</li>
+        <li>睡眠 6—7 小时、心率正常：可以安排 20—30 分钟低强度活动。</li>
+        <li>睡眠达到 7 小时：可以正常安排活动，避免连续久坐。</li>
+      </ul>
+      <p>区间边界：久坐按小于 4、4—6、大于 6 小时分档；睡眠按小于 6、6—7、大于等于 7 小时分档；步数按小于 3000、3000—5999、大于等于 6000 分档；静息心率大于 70 算偏高，小于等于 70 算正常，留空按正常处理。</p>
+      <p>表里没有的组合，走兜底规则：活动建议按同久坐、同睡眠、心率正常那一行输出；“今天最该做”固定为“中午闭眼休息 10 分钟，不安排高强度”。</p>
+    </section>
+
+    <section class="about-card disclaimer">
+      <h2>免责声明</h2>
+      <p>本工具只做固定规则判断，输出的是通用生活建议，不构成医疗建议，也不能替代医生的诊断。如果你身体不适、有慢性病或正在服药，请及时就医，以医生的意见为准。</p>
+    </section>
+
+    <footer class="app-footer">
+      <p><a href="index.html">返回生成建议</a></p>
+    </footer>
+  </main>
+</body>
+</html>

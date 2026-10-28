@@ -143,3 +143,62 @@ button:focus-visible {
     padding: 24px 16px;
   }
 }
+
+.about-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+}
+
+.about-card h2 {
+  font-size: 15px;
+  margin: 0 0 8px;
+  color: var(--accent);
+  border-left: 4px solid var(--accent);
+  padding-left: 10px;
+}
+
+.about-card p {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+
+.about-card p:last-child {
+  margin-bottom: 0;
+}
+
+.rule-list {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.rule-list li {
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+.rule-list li:last-child {
+  margin-bottom: 0;
+}
+
+.disclaimer {
+  border: 1px solid #e6d5cd;
+  background: #fbf6f2;
+}
+
+.disclaimer h2 {
+  color: var(--error);
+  border-left-color: var(--error);
+}
+
+.app-footer a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.app-footer a:hover {
+  text-decoration: underline;
+}

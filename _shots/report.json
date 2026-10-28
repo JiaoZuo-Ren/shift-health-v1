@@ -10,7 +10,7 @@
   "shots": {
     "desktop": {
       "screenshot": "C:\\Users\\21793\\Desktop\\shift-health\\_shots\\index_desktop.jpg",
-      "screenshotBytes": 20593,
+      "screenshotBytes": 21090,
       "truncated": false,
       "structure": {
         "title": "今日活动建议 - 第一版",
@@ -30,7 +30,39 @@
           "img": 0,
           "canvas": 0,
           "svg": 0,
-          "links": 0,
+          "links": 1,
+          "buttons": 1
+        }
+      },
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "horizontalOverflow": [],
+      "resourceErrors": [],
+      "reportSource": "cdp"
+    },
+    "mobile": {
+      "screenshot": "C:\\Users\\21793\\Desktop\\shift-health\\_shots\\index_mobile.jpg",
+      "screenshotBytes": 28503,
+      "truncated": false,
+      "structure": {
+        "title": "今日活动建议 - 第一版",
+        "firstH1": "今日活动建议",
+        "viewport": {
+          "w": 492,
+          "h": 704
+        },
+        "fullpage": {
+          "w": 492,
+          "h": 746
+        },
+        "counts": {
+          "section": 2,
+          "h1": 1,
+          "h2": 2,
+          "img": 0,
+          "canvas": 0,
+          "svg": 0,
+          "links": 1,
           "buttons": 1
         }
       },
@@ -43,10 +75,9 @@
   },
   "engine": "chrome_cli",
   "chromiumExec": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
-  "evalIgnored": "chrome_cli 降级模式不支持 --eval 注入，本次已忽略；如需注入 JS，请装 playwright。",
   "engineDegraded": true,
   "engineDegradedReason": "playwright 未装",
-  "elapsedSec": 3.02,
+  "elapsedSec": 5.98,
   "schemaVersion": 2,
   "status": "pass",
   "engineInfo": {
@@ -71,7 +102,16 @@
       {
         "viewport": "desktop",
         "path": "C:\\Users\\21793\\Desktop\\shift-health\\_shots\\index_desktop.jpg",
-        "size": 20593,
+        "size": 21090,
+        "visualCoverage": {
+          "complete": true,
+          "reason": null
+        }
+      },
+      {
+        "viewport": "mobile",
+        "path": "C:\\Users\\21793\\Desktop\\shift-health\\_shots\\index_mobile.jpg",
+        "size": 28503,
         "visualCoverage": {
           "complete": true,
           "reason": null
