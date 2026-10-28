@@ -1,0 +1,91 @@
+{
+  "src": "C:\\Users\\21793\\Desktop\\shift-health\\index.html",
+  "url": "file:///C:/Users/21793/Desktop/shift-health/index.html",
+  "outdir": "C:\\Users\\21793\\Desktop\\shift-health\\_shots",
+  "include": [
+    "lint",
+    "screenshots",
+    "structure"
+  ],
+  "shots": {
+    "desktop": {
+      "screenshot": "C:\\Users\\21793\\Desktop\\shift-health\\_shots\\index_desktop.jpg",
+      "screenshotBytes": 20593,
+      "truncated": false,
+      "structure": {
+        "title": "今日活动建议 - 第一版",
+        "firstH1": "今日活动建议",
+        "viewport": {
+          "w": 1414,
+          "h": 760
+        },
+        "fullpage": {
+          "w": 1414,
+          "h": 760
+        },
+        "counts": {
+          "section": 2,
+          "h1": 1,
+          "h2": 2,
+          "img": 0,
+          "canvas": 0,
+          "svg": 0,
+          "links": 0,
+          "buttons": 1
+        }
+      },
+      "consoleErrors": [],
+      "consoleWarnings": [],
+      "horizontalOverflow": [],
+      "resourceErrors": [],
+      "reportSource": "cdp"
+    }
+  },
+  "engine": "chrome_cli",
+  "chromiumExec": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+  "evalIgnored": "chrome_cli 降级模式不支持 --eval 注入，本次已忽略；如需注入 JS，请装 playwright。",
+  "engineDegraded": true,
+  "engineDegradedReason": "playwright 未装",
+  "elapsedSec": 3.02,
+  "schemaVersion": 2,
+  "status": "pass",
+  "engineInfo": {
+    "name": "chrome_cli",
+    "degraded": true,
+    "degradedReasons": [
+      "playwright 未装"
+    ]
+  },
+  "input": {
+    "original": "C:\\Users\\21793\\Desktop\\shift-health\\index.html",
+    "resolvedPath": "C:\\Users\\21793\\Desktop\\shift-health\\index.html",
+    "baseUrl": "file:///C:/Users/21793/Desktop/shift-health/index.html",
+    "protocol": "file",
+    "cwd": "C:\\Users\\21793\\Doubao\\chats\\2026-10-28\\new-chat",
+    "mediaMode": {
+      "reducedMotion": true
+    }
+  },
+  "artifacts": {
+    "screenshots": [
+      {
+        "viewport": "desktop",
+        "path": "C:\\Users\\21793\\Desktop\\shift-health\\_shots\\index_desktop.jpg",
+        "size": 20593,
+        "visualCoverage": {
+          "complete": true,
+          "reason": null
+        }
+      }
+    ]
+  },
+  "summary": {
+    "blocker": 0,
+    "error": 0,
+    "warning": 0,
+    "info": 0
+  },
+  "findings": [],
+  "prioritizedActions": [],
+  "reportPath": "C:\\Users\\21793\\Desktop\\shift-health\\_shots\\report.json"
+}
