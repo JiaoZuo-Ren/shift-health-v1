@@ -3,7 +3,7 @@
 'use strict';
 
 const site = require('./script.js');
-const { getAdvice, getNightAdvice, bins, computeVitality, validateInputs } = site;
+const { getAdvice, getNightAdvice, bins, computeVitality, validateInputs, computeHydration, computeMicroAction } = site;
 
 let pass = 0;
 let fail = 0;
@@ -161,6 +161,22 @@ check('夜班 R3 最该做', getNightAdvice(8, 65, 0).key, '今天最该做：�
 check('夜班 边界 睡眠=7 → R3', getNightAdvice(7, 65, 2000).advice, '补觉充足：今天可以正常安排活动（30分钟中低强度均可），但避免在晚间喝咖啡。');
 check('夜班 边界 睡眠=5 → R2', getNightAdvice(5, 65, 2500).advice, '夜班后睡眠5—7小时是正常现象，不用焦虑：醒后见光10分钟，散步20分钟补活动量。');
 check('夜班 活力 久坐留空 (null,5,80,2000) → 40', computeVitality(null, 5, 80, 2000), 40);
+
+/* ---------- 今日饮水目标（按步数分档 + 久坐调整） ---------- */
+check('饮水 久坐7步数2000 → 补到2升', computeHydration(2000, 7, 'day'), '今日饮水目标：2 升。久坐超过6小时，工位上放一杯水，每坐满50分钟起身时喝几口。');
+check('饮水 久坐3步数2500 → 1.5升', computeHydration(2500, 3, 'day'), '今日饮水目标：1.5 升。平时喝水少就分次补足，别等渴了才喝。');
+check('饮水 久坐7步数8000 → 2升', computeHydration(8000, 7, 'day'), '今日饮水目标：2 升。久坐超过6小时，工位上放一杯水，每坐满50分钟起身时喝几口。');
+check('饮水 步数10000 → 2.5升', computeHydration(10000, 2, 'day'), '今日饮水目标：2.5 升。平时喝水少就分次补足，别等渴了才喝。');
+check('饮水 久坐5步数4000 → 1.8升 每小时提醒', computeHydration(4000, 5, 'day'), '今日饮水目标：1.8 升。坐着工作容易忘记喝水，每小时起身时顺便喝几口。');
+check('饮水 久坐5步数6000 → 2升 每小时提醒', computeHydration(6000, 5, 'day'), '今日饮水目标：2 升。坐着工作容易忘记喝水，每小时起身时顺便喝几口。');
+check('饮水 夜班 步数2000 → 1.5升 夜班提醒', computeHydration(2000, null, 'night'), '今日饮水目标：1.5 升。夜班补水别在睡前猛灌，白天分次小口喝，起床后先喝一杯温水。');
+
+/* ---------- 微动作建议（一个具体拉伸动作） ---------- */
+check('微动作 久坐7 睡眠6.5 → 颈部米字操', computeMicroAction(7, 6.5, 'day'), '颈部米字操：坐直，头缓慢写“米”字，每个方向停顿2秒，重复3轮，缓解久坐颈椎压力。');
+check('微动作 久坐5 睡眠6.5 → 扩胸运动', computeMicroAction(5, 6.5, 'day'), '扩胸运动：双手背后交握，挺胸后仰，保持15秒，做3组，打开胸廓、缓解圆肩。');
+check('微动作 久坐2 睡眠8 → 髋屈肌拉伸', computeMicroAction(2, 8, 'day'), '髋屈肌拉伸：弓步下压，前腿弯曲、后膝着地，每侧保持30秒，左右各2组，唤醒久坐僵硬的髋部。');
+check('微动作 久坐7 睡眠5 → 肩颈放松(睡眠不足)', computeMicroAction(7, 5, 'day'), '肩颈放松（睡眠不足，别做费力拉伸）：耸肩—绕肩各10次，侧头拉伸每侧15秒，做2轮。');
+check('微动作 夜班 → 醒后肩颈放松', computeMicroAction(null, 6, 'night'), '醒后肩颈放松：起床站立，耸肩—绕肩各10次，侧头拉伸每侧15秒，帮身体从夜班状态缓过来。');
 
 console.log('--------------------------------');
 console.log('通过 ' + pass + ' 项，失败 ' + fail + ' 项');

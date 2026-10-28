@@ -6,6 +6,23 @@
   <title>今日活动建议 - 第一版</title>
   <link rel="stylesheet" href="style.css?v=7">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f7d5b'/%3E%3Cpath d='M8 17h4l2-6 3 10 2-4h5' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <!-- Open Graph：分享到微信/社交平台时展示的标题、简介和缩略图 -->
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:site_name" content="今日活动建议">
+  <meta property="og:title" content="今日活动建议 — 告诉你今天该做什么、不该做什么">
+  <meta property="og:description" content="输入久坐、睡眠、心率、步数四个数字，按固定规则给出今天最合适的活动安排。久坐人群的数据翻译，不接AI、不猜、不编。">
+  <meta property="og:url" content="https://jiaozuo-ren.github.io/shift-health-v1/">
+  <meta property="og:image" content="https://jiaozuo-ren.github.io/shift-health-v1/og-preview.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="今日活动建议：久坐人群的数据翻译">
+  <!-- Twitter / X 卡片 -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="今日活动建议 — 告诉你今天该做什么、不该做什么">
+  <meta name="twitter:description" content="输入久坐、睡眠、心率、步数四个数字，按固定规则给出今天最合适的活动安排。">
+  <meta name="twitter:image" content="https://jiaozuo-ren.github.io/shift-health-v1/og-preview.png">
+  <!-- 提示：og:url 与 og:image 里的域名/路径，部署后请按实际线上地址更新 -->
 </head>
 <body>
   <button type="button" id="themeToggle" class="theme-toggle" aria-label="切换暗黑模式" title="切换暗黑模式">
@@ -43,6 +60,9 @@
         <label for="steps">每日步数（步）</label>
         <input type="number" id="steps" inputmode="numeric" placeholder="如 6000" min="0" max="100000" step="1" required>
       </div>
+      <div class="demo-row">
+        <button type="button" id="demoBtn" class="demo-btn">一键填入示例数据，立刻看看效果</button>
+      </div>
       <button type="button" id="generateBtn">生成今天的建议</button>
       <p id="formError" class="form-error" role="alert" hidden></p>
     </section>
@@ -61,6 +81,14 @@
       <div class="result-block">
         <h2>活动建议</h2>
         <p id="activityAdvice"></p>
+      </div>
+      <div class="result-block result-micro">
+        <h2><svg class="micro-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.7 6.2 9a6.8 6.8 0 0 0 11.6 0L12 2.7z"/></svg>今日饮水目标</h2>
+        <p id="hydrationAdvice"></p>
+      </div>
+      <div class="result-block result-micro">
+        <h2><svg class="micro-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>微动作建议</h2>
+        <p id="microAdvice"></p>
       </div>
       <div class="result-block result-taboo">
         <h2>绝对禁忌</h2>

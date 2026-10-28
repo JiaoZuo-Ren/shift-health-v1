@@ -224,6 +224,48 @@
     return score;
   }
 
+  /* ================= 今日饮水目标（根据步数与久坐时长给出固定建议） ================= */
+  function fmtAmount(a) {
+    return (a === Math.floor(a)) ? String(a) : a.toFixed(1);
+  }
+
+  function computeHydration(steps, sedentary, mode) {
+    var amount;
+    if (steps >= 10000) amount = 2.5;
+    else if (steps >= 6000) amount = 2.0;
+    else if (steps >= 3000) amount = 1.8;
+    else amount = 1.5;
+
+    if (mode === 'night') {
+      return '今日饮水目标：' + fmtAmount(amount) + ' 升。夜班补水别在睡前猛灌，白天分次小口喝，起床后先喝一杯温水。';
+    }
+    if (sedentary !== null && sedentary > 6) {
+      var need = Math.max(amount, 2.0);
+      return '今日饮水目标：' + fmtAmount(need) + ' 升。久坐超过6小时，工位上放一杯水，每坐满50分钟起身时喝几口。';
+    }
+    if (sedentary !== null && sedentary >= 4) {
+      return '今日饮水目标：' + fmtAmount(amount) + ' 升。坐着工作容易忘记喝水，每小时起身时顺便喝几口。';
+    }
+    return '今日饮水目标：' + fmtAmount(amount) + ' 升。平时喝水少就分次补足，别等渴了才喝。';
+  }
+
+  /* ================= 微动作建议（一个具体拉伸动作，根据久坐与睡眠给出） ================= */
+  function computeMicroAction(sedentary, sleep, mode) {
+    if (mode === 'night') {
+      return '醒后肩颈放松：起床站立，耸肩—绕肩各10次，侧头拉伸每侧15秒，帮身体从夜班状态缓过来。';
+    }
+    if (sleep !== null && sleep < 6) {
+      return '肩颈放松（睡眠不足，别做费力拉伸）：耸肩—绕肩各10次，侧头拉伸每侧15秒，做2轮。';
+    }
+    if (sedentary !== null && sedentary > 6) {
+      return '颈部米字操：坐直，头缓慢写“米”字，每个方向停顿2秒，重复3轮，缓解久坐颈椎压力。';
+    }
+    if (sedentary !== null && sedentary >= 4) {
+      return '扩胸运动：双手背后交握，挺胸后仰，保持15秒，做3组，打开胸廓、缓解圆肩。';
+    }
+    return '髋屈肌拉伸：弓步下压，前腿弯曲、后膝着地，每侧保持30秒，左右各2组，唤醒久坐僵硬的髋部。';
+  }
+
   /* ================= 夜班/倒时差规则（独立于久坐规则表） ================= */
   function getNightAdvice(sleep, hr, steps) {
     var hrHigh = hr !== null && hr > 70;
@@ -357,6 +399,8 @@
     var btn = document.getElementById('generateBtn');
     var result = document.getElementById('result');
     var activityEl = document.getElementById('activityAdvice');
+    var hydrationEl = document.getElementById('hydrationAdvice');
+    var microEl = document.getElementById('microAdvice');
     var tabooEl = document.getElementById('tabooAdvice');
     var actionEl = document.getElementById('actionAdvice');
     var nutritionEl = document.getElementById('nutritionAdvice');
@@ -411,6 +455,8 @@
           riskBadge.textContent = out.risk;
           riskBadge.className = 'risk-badge risk-' + out.riskLevel;
           activityEl.textContent = out.advice;
+          hydrationEl.textContent = computeHydration(steps, sedentary, currentMode);
+          microEl.textContent = computeMicroAction(sedentary, sleep, currentMode);
           tabooEl.textContent = out.taboo;
           actionEl.textContent = out.action;
           nutritionEl.textContent = out.nutrition;
@@ -433,6 +479,15 @@
       }, 500);
     });
 
+    /* 一键填入示例数据：填入示例并立即触发生成，降低使用门槛 */
+    document.getElementById('demoBtn').addEventListener('click', function () {
+      document.getElementById('sedentary').value = '8';
+      document.getElementById('sleep').value = '6';
+      document.getElementById('hr').value = '75';
+      document.getElementById('steps').value = '2500';
+      btn.click();
+    });
+
     /* 一键复制：把两段建议复制到剪贴板 */
     document.getElementById('copyBtn').addEventListener('click', function () {
       var advice = activityEl.textContent;
@@ -442,6 +497,7 @@
         return;
       }
       var text = '【今日状态】' + riskBadge.textContent + '\n【活动建议】' + advice +
+        '\n【今日饮水目标】' + hydrationEl.textContent + '\n【微动作建议】' + microEl.textContent +
         '\n【绝对禁忌】' + tabooEl.textContent + '\n【动作处方】' + actionEl.textContent +
         '\n【营养提示】' + nutritionEl.textContent + '\n【今天最该做的一件事】' + key;
       copyText(text).then(
@@ -642,6 +698,8 @@
       getAdvice: getAdvice,
       getNightAdvice: getNightAdvice,
       computeVitality: computeVitality,
+      computeHydration: computeHydration,
+      computeMicroAction: computeMicroAction,
       formatMonthDay: formatMonthDay,
       getLastTestText: getLastTestText,
       RULES: RULES,

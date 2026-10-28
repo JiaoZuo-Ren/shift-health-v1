@@ -210,6 +210,36 @@ button:disabled {
   box-shadow: none;
 }
 
+/* 一键填入示例数据（次级文字按钮） */
+.demo-row {
+  margin: 2px 0 12px;
+  text-align: center;
+}
+
+.demo-btn {
+  width: auto;
+  display: inline-block;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-dark);
+  background: transparent;
+  border: 1px dashed var(--accent);
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.demo-btn:hover {
+  background: var(--accent-soft);
+  border-style: solid;
+}
+
+.demo-btn:active {
+  transform: translateY(1px);
+}
+
 .form-error {
   color: var(--error);
   font-size: 14px;
@@ -631,6 +661,24 @@ button:disabled {
 /* 绝对禁忌块的标题用警示色 */
 .result-taboo h2 {
   color: var(--error);
+}
+
+/* 带图标的微模块标题（饮水目标、微动作建议） */
+.result-micro h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.micro-ico {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* 分享卡片上的状态行 */
