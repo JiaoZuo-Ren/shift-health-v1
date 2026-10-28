@@ -9,14 +9,19 @@
 </head>
 <body>
   <main class="app">
+    <div class="mode-tabs" role="tablist" aria-label="人群模式">
+      <button type="button" class="mode-tab is-active" id="tabDay" role="tab" aria-selected="true">久坐上班族</button>
+      <button type="button" class="mode-tab" id="tabNight" role="tab" aria-selected="false">夜班/倒时差</button>
+    </div>
+
     <header class="app-header">
       <h1>今日活动建议</h1>
-      <p>输入久坐、睡眠、心率、步数，按固定规则给出今天最合适的活动安排。</p>
-      <p class="app-sub">专为久坐上班族、学生设计。只需填入今日数据，获取你的专属活动建议。</p>
+      <p id="appDesc">输入久坐、睡眠、心率、步数，按固定规则给出今天最合适的活动安排。</p>
+      <p class="app-sub" id="appSub">专为久坐上班族、学生设计。只需填入今日数据，获取你的专属活动建议。</p>
     </header>
 
     <section class="form-card" aria-label="输入数据">
-      <div class="field">
+      <div class="field" id="fieldSedentary">
         <label for="sedentary">久坐时长（小时）</label>
         <input type="number" id="sedentary" inputmode="decimal" placeholder="如 7" min="0" step="0.1" required>
       </div>

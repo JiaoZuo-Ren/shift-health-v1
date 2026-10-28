@@ -90,11 +90,29 @@
   function computeVitality(sedentary, sleep, hr, steps) {
     var score = 100;
     if (sleep < 6) score -= 20;
-    if (sedentary > 6) score -= 20;
+    if (sedentary !== null && sedentary > 6) score -= 20;
     if (steps < 3000) score -= 20;
     if (hr !== null && hr > 70) score -= 20;
     if (score < 20) score = 20;
     return score;
+  }
+
+  /* ================= 夜班/倒时差规则（独立于久坐规则表） ================= */
+  function getNightAdvice(sleep, hr, steps) {
+    var hrHigh = hr !== null && hr > 70;
+    if (sleep < 5 && hrHigh) {
+      return { advice: '建议今天必须优先补觉，白天避光，不安排任何高强度活动。', key: '今天最该做：白天避光补觉，不安排高强度。' };
+    }
+    if (sleep < 5) {
+      return { advice: '睡眠不足5小时，今天优先补觉，白天避光，不安排高强度活动。', key: '今天最该做：补觉，不安排高强度。' };
+    }
+    if (sleep < 7) {
+      if (steps < 3000) {
+        return { advice: '建议这是正常现象，不用焦虑，醒后见光10分钟，散步20分钟。', key: '今天最该做：醒后见光10分钟，散步20分钟。' };
+      }
+      return { advice: '睡眠和活动量都够，保持现状，醒后见光10分钟。', key: '今天最该做：保持节奏，醒后见光10分钟。' };
+    }
+    return { advice: '说明补觉充足，今天可以正常安排活动，但避免在晚间喝咖啡。', key: '今天最该做：保持正常活动，晚上不喝咖啡。' };
   }
 
   /* ================= 最近一次测试（localStorage） ================= */
@@ -111,11 +129,12 @@
     return '你上次测试是在：' + formatMonthDay(rec.date) + '，当时活力值：' + rec.vitality + '分';
   }
 
-  function saveLastTest(sedentary, sleep, hr, steps, vitality) {
+  function saveLastTest(sedentary, sleep, hr, steps, vitality, mode) {
     try {
       var now = new Date();
       var record = {
         date: now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate(),
+        mode: mode || 'day',
         sedentary: sedentary,
         sleep: sleep,
         hr: hr,
@@ -166,16 +185,23 @@
     var vitalityTrack = document.getElementById('vitalityTrack');
     var vitalityFill = document.getElementById('vitalityFill');
     var vitalityScore = document.getElementById('vitalityScore');
+    var tabDay = document.getElementById('tabDay');
+    var tabNight = document.getElementById('tabNight');
+    var fieldSedentary = document.getElementById('fieldSedentary');
+    var appDesc = document.getElementById('appDesc');
+    var appSub = document.getElementById('appSub');
+    var currentMode = 'day';
 
     btn.addEventListener('click', function () {
       errEl.hidden = true;
 
-      var sedentary = parseNum(document.getElementById('sedentary').value);
+      var sedentaryRaw = document.getElementById('sedentary').value.trim();
+      var sedentary = parseNum(sedentaryRaw);
       var sleep = parseNum(document.getElementById('sleep').value);
       var hrRaw = document.getElementById('hr').value.trim();
       var steps = parseNum(document.getElementById('steps').value);
 
-      if (sedentary === null) {
+      if (currentMode === 'day' && sedentary === null) {
         showError(errEl, '请填写久坐时长（小时），填不小于 0 的数字。');
         return;
       }
@@ -199,7 +225,9 @@
       btn.textContent = '分析中…';
 
       setTimeout(function () {
-        var out = getAdvice(sedentary, sleep, hr, steps);
+        var out = currentMode === 'night'
+          ? getNightAdvice(sleep, hr, steps)
+          : getAdvice(sedentary, sleep, hr, steps);
         if (!out) {
           showError(errEl, '没有匹配到规则，请检查输入。');
         } else {
@@ -209,7 +237,7 @@
           vitalityFill.style.width = vitality + '%';
           vitalityScore.textContent = vitality + ' / 100';
           vitalityTrack.setAttribute('aria-valuenow', vitality);
-          saveLastTest(sedentary, sleep, hr, steps, vitality);
+          saveLastTest(sedentary, sleep, hr, steps, vitality, currentMode);
           updateLastTestDisplay();
           result.hidden = false;
           result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -241,6 +269,48 @@
         btn.click();
       }
     });
+
+    /* 人群模式切换：输入框与判断逻辑联动，两个模式各自独立记忆输入 */
+    var modeInputs = { day: {}, night: {} };
+
+    function readInputs() {
+      return {
+        sedentary: document.getElementById('sedentary').value,
+        sleep: document.getElementById('sleep').value,
+        hr: document.getElementById('hr').value,
+        steps: document.getElementById('steps').value
+      };
+    }
+
+    function writeInputs(vals) {
+      document.getElementById('sedentary').value = vals.sedentary || '';
+      document.getElementById('sleep').value = vals.sleep || '';
+      document.getElementById('hr').value = vals.hr || '';
+      document.getElementById('steps').value = vals.steps || '';
+    }
+
+    function setMode(mode) {
+      if (mode === currentMode) return;
+      modeInputs[currentMode] = readInputs();
+      currentMode = mode;
+      tabDay.classList.toggle('is-active', mode === 'day');
+      tabDay.setAttribute('aria-selected', mode === 'day');
+      tabNight.classList.toggle('is-active', mode === 'night');
+      tabNight.setAttribute('aria-selected', mode === 'night');
+      fieldSedentary.style.display = mode === 'day' ? '' : 'none';
+      appDesc.textContent = mode === 'day'
+        ? '输入久坐、睡眠、心率、步数，按固定规则给出今天最合适的活动安排。'
+        : '输入睡眠、心率、步数，按夜班专属规则给出今天的建议。';
+      appSub.textContent = mode === 'day'
+        ? '专为久坐上班族、学生设计。只需填入今日数据，获取你的专属活动建议。'
+        : '专为夜班、倒时差人群设计。只需填入今日数据，获取你的专属活动建议。';
+      writeInputs(modeInputs[mode] || {});
+      result.hidden = true;
+      errEl.hidden = true;
+    }
+
+    tabDay.addEventListener('click', function () { setMode('day'); });
+    tabNight.addEventListener('click', function () { setMode('night'); });
 
     /* 页面加载时显示最近一次测试记录 */
     updateLastTestDisplay();
@@ -297,6 +367,7 @@
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
       getAdvice: getAdvice,
+      getNightAdvice: getNightAdvice,
       computeVitality: computeVitality,
       formatMonthDay: formatMonthDay,
       getLastTestText: getLastTestText,

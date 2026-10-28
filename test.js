@@ -3,7 +3,7 @@
 'use strict';
 
 const site = require('./script.js');
-const { getAdvice, bins, computeVitality } = site;
+const { getAdvice, getNightAdvice, bins, computeVitality } = site;
 
 let pass = 0;
 let fail = 0;
@@ -126,6 +126,20 @@ check('上次测试 文案生成', site.getLastTestText({ date: '2026-10-28', vi
 check('上次测试 无记录返回null', site.getLastTestText(null), null);
 check('上次测试 缺日期字段返回null', site.getLastTestText({ vitality: 80 }), null);
 check('上次测试 缺活力值字段返回null', site.getLastTestText({ date: '2026-10-28' }), null);
+
+/* ---------- 夜班/倒时差规则 ---------- */
+check('夜班 R1 睡眠<5且心率偏高 (4,80,2000)', getNightAdvice(4, 80, 2000).advice, '建议今天必须优先补觉，白天避光，不安排任何高强度活动。');
+check('夜班 R1 最该做', getNightAdvice(4, 80, 2000).key, '今天最该做：白天避光补觉，不安排高强度。');
+check('夜班 兜底A 睡眠<5心率正常 (4,65,8000)', getNightAdvice(4, 65, 8000).advice, '睡眠不足5小时，今天优先补觉，白天避光，不安排高强度活动。');
+check('夜班 兜底A 心率留空 (4,null,2000)', getNightAdvice(4, null, 2000).advice, '睡眠不足5小时，今天优先补觉，白天避光，不安排高强度活动。');
+check('夜班 R2 睡眠5-7且步数<3000 (6,65,2500)', getNightAdvice(6, 65, 2500).advice, '建议这是正常现象，不用焦虑，醒后见光10分钟，散步20分钟。');
+check('夜班 R2 最该做', getNightAdvice(6, 65, 2500).key, '今天最该做：醒后见光10分钟，散步20分钟。');
+check('夜班 兜底B 睡眠5-7且步数≥3000 (6,65,8000)', getNightAdvice(6, 65, 8000).advice, '睡眠和活动量都够，保持现状，醒后见光10分钟。');
+check('夜班 R3 睡眠≥7 (8,65,0)', getNightAdvice(8, 65, 0).advice, '说明补觉充足，今天可以正常安排活动，但避免在晚间喝咖啡。');
+check('夜班 R3 最该做', getNightAdvice(8, 65, 0).key, '今天最该做：保持正常活动，晚上不喝咖啡。');
+check('夜班 边界 睡眠=7 → R3', getNightAdvice(7, 65, 2000).advice, '说明补觉充足，今天可以正常安排活动，但避免在晚间喝咖啡。');
+check('夜班 边界 睡眠=5 → R2', getNightAdvice(5, 65, 2500).advice, '建议这是正常现象，不用焦虑，醒后见光10分钟，散步20分钟。');
+check('夜班 活力 久坐留空 (null,5,80,2000) → 40', computeVitality(null, 5, 80, 2000), 40);
 
 console.log('--------------------------------');
 console.log('通过 ' + pass + ' 项，失败 ' + fail + ' 项');
