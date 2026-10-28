@@ -1,5 +1,7 @@
 :root {
   --bg: #f4f7f6;
+  --bg-top: #f8fbf9;
+  --bg-bottom: #eef3f0;
   --card: #ffffff;
   --ink: #22302a;
   --muted: #66776d;
@@ -7,9 +9,30 @@
   --accent-dark: #276749;
   --accent-soft: #e7f3ec;
   --line: #e3eae5;
+  --input-bg: #ffffff;
+  --track-bg: #e9efea;
   --shadow: 0 4px 18px rgba(31, 42, 36, 0.07);
   --error: #b3423a;
   --toast-bg: #22302a;
+}
+
+/* 暗黑模式主题变量 */
+:root[data-theme="dark"] {
+  --bg: #0f1512;
+  --bg-top: #0f1512;
+  --bg-bottom: #18221c;
+  --card: #1a231e;
+  --ink: #e6efe9;
+  --muted: #93a69b;
+  --accent: #3fa878;
+  --accent-dark: #5ec291;
+  --accent-soft: #22352c;
+  --line: #2d3a33;
+  --input-bg: #141c17;
+  --track-bg: #26322c;
+  --shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+  --error: #e07a70;
+  --toast-bg: #2b3831;
 }
 
 * {
@@ -19,7 +42,7 @@
 body {
   margin: 0;
   font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", "Segoe UI", sans-serif;
-  background: linear-gradient(180deg, #f8fbf9 0%, #eef3f0 100%);
+  background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
   background-attachment: fixed;
   color: var(--ink);
   line-height: 1.65;
@@ -123,7 +146,8 @@ body {
   font-size: 16px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fff;
+  background: var(--input-bg);
+  color: var(--ink);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -177,12 +201,12 @@ button:disabled {
   margin-top: 16px;
   background: var(--accent-soft);
   color: var(--accent-dark);
-  border: 1px solid #cfe5d8;
+  border: 1px solid var(--line);
   box-shadow: none;
 }
 
 .copy-btn:hover {
-  background: #d8eadf;
+  background: var(--accent-soft);
   box-shadow: none;
 }
 
@@ -240,7 +264,7 @@ button:disabled {
 
 .vitality-track {
   height: 14px;
-  background: #e9efea;
+  background: var(--track-bg);
   border-radius: 999px;
   overflow: hidden;
 }
@@ -492,4 +516,67 @@ button:disabled {
   font-weight: 700;
   letter-spacing: 1px;
   color: #ffd98a;
+}
+
+/* ================= 暗黑模式切换按钮（右上角） ================= */
+.theme-toggle {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+  z-index: 50;
+}
+
+.theme-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.theme-toggle svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icon-sun {
+  display: none;
+}
+
+.icon-moon {
+  display: block;
+}
+
+:root[data-theme="dark"] .icon-sun {
+  display: block;
+}
+
+:root[data-theme="dark"] .icon-moon {
+  display: none;
+}
+
+/* 暗黑模式下个别元素的微调 */
+:root[data-theme="dark"] .disclaimer {
+  border-color: #4a352e;
+  background: #2a211d;
+}
+
+:root[data-theme="dark"] .mode-switch-btn:disabled,
+:root[data-theme="dark"] button:disabled {
+  background: #3a4a42;
+  color: #93a69b;
 }

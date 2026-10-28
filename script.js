@@ -369,6 +369,16 @@
       setMode(currentMode === 'day' ? 'night' : 'day');
     });
 
+    /* 暗黑模式：右上角按钮切换，localStorage 记住选择 */
+    var savedTheme = null;
+    try { savedTheme = localStorage.getItem('shiftHealthTheme'); } catch (e) {}
+    document.documentElement.setAttribute('data-theme', savedTheme === 'dark' ? 'dark' : 'light');
+    document.getElementById('themeToggle').addEventListener('click', function () {
+      var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('shiftHealthTheme', next); } catch (e) {}
+    });
+
     /* 页面加载时显示最近一次测试记录 */
     updateLastTestDisplay();
   }
