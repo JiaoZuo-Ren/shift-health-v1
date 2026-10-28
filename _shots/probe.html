@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>theme probe</title>
+  <style>
+    :root { --x: #ff0000; }
+    :root[data-theme="dark"] { --x: #00ff00; }
+    body { background: var(--x); margin: 0; }
+  </style>
+</head>
+<body><h1>probe</h1></body>
+</html>

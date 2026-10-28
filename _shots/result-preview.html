@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>结果预览</title>
+  <link rel="stylesheet" href="../style.css?v=6">
+</head>
+<body>
+  <main class="app">
+    <div class="mode-switch">
+      <p class="mode-status">当前模式：久坐上班族</p>
+      <button type="button" class="mode-switch-btn">tap</button>
+      <p class="mode-hint">点一下切换模式</p>
+    </div>
+    <header class="app-header">
+      <h1>今日活动建议</h1>
+      <p>结果区布局预览（模拟第1行：久坐7 睡眠5 心率80 步数2000）</p>
+    </header>
+    <section class="result">
+      <div class="vitality">
+        <div class="vitality-head">
+          <span class="vitality-label">今日活力值</span>
+          <span class="vitality-score">20 / 100</span>
+        </div>
+        <div class="vitality-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="20" aria-label="今日活力值">
+          <div class="vitality-fill" style="width:20%"></div>
+        </div>
+      </div>
+      <p class="risk-badge risk-red">红灯（恢复不足）</p>
+      <div class="result-block">
+        <h2>活动建议</h2>
+        <p>今天只做轻度主动恢复：20分钟平地慢走，强度以说话不喘为准。先每坐50分钟站起来2分钟，晚饭后散步15分钟补步数。</p>
+      </div>
+      <div class="result-block result-taboo">
+        <h2>绝对禁忌</h2>
+        <p>禁止HIIT、大重量抗阻和剧烈有氧——睡眠严重不足且心率偏高时，高强度训练风险大于收益；若静息心率经常超过100次/分，或伴有胸痛、头晕、气短，请就医。</p>
+      </div>
+      <div class="result-block">
+        <h2>动作处方</h2>
+        <p>每坐50分钟起身2分钟；做3组靠墙静蹲（每组30—45秒），激活臀部、缓解腰椎压力；膝关节不适就减量或停止。</p>
+      </div>
+      <div class="result-block">
+        <h2>营养提示</h2>
+        <p>下午2点后不再摄入咖啡因（睡前6小时摄入仍会明显缩短睡眠）；晚餐加一份深绿叶菜（菠菜）或一把南瓜子补镁。</p>
+      </div>
+      <div class="result-block">
+        <h2>今天最该做的一件事</h2>
+        <p>今天最该做：中午闭眼休息10分钟，不安排高强度。</p>
+      </div>
+      <button type="button" class="copy-btn">📋 复制建议</button>
+      <button type="button" class="copy-btn">生成今日数据卡片</button>
+    </section>
+  </main>
+</body>
+</html>
