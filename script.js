@@ -86,6 +86,17 @@
     return null;
   }
 
+  /* ================= 今日活力值（独立于规则表的第二套输出） ================= */
+  function computeVitality(sedentary, sleep, hr, steps) {
+    var score = 100;
+    if (sleep < 6) score -= 20;
+    if (sedentary > 6) score -= 20;
+    if (steps < 3000) score -= 20;
+    if (hr !== null && hr > 70) score -= 20;
+    if (score < 20) score = 20;
+    return score;
+  }
+
   /* ================= 页面逻辑 ================= */
   function parseNum(v) {
     var s = String(v).trim();
@@ -100,8 +111,10 @@
     var result = document.getElementById('result');
     var activityEl = document.getElementById('activityAdvice');
     var keyEl = document.getElementById('keyAdvice');
-    var matchEl = document.getElementById('matchInfo');
     var errEl = document.getElementById('formError');
+    var vitalityTrack = document.getElementById('vitalityTrack');
+    var vitalityFill = document.getElementById('vitalityFill');
+    var vitalityScore = document.getElementById('vitalityScore');
 
     btn.addEventListener('click', function () {
       errEl.hidden = true;
@@ -141,9 +154,10 @@
         } else {
           activityEl.textContent = out.advice;
           keyEl.textContent = out.key;
-          matchEl.textContent = out.fallback
-            ? '匹配：兜底规则（同久坐、同睡眠、心率正常行的活动建议 + 固定“今天最该做”）'
-            : '匹配：规则表第 ' + out.row + ' 行';
+          var vitality = computeVitality(sedentary, sleep, hr, steps);
+          vitalityFill.style.width = vitality + '%';
+          vitalityScore.textContent = vitality + ' / 100';
+          vitalityTrack.setAttribute('aria-valuenow', vitality);
           result.hidden = false;
           result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
@@ -227,6 +241,7 @@
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
       getAdvice: getAdvice,
+      computeVitality: computeVitality,
       RULES: RULES,
       FALLBACK_KEY: FALLBACK_KEY,
       bins: { sedentaryBin: sedentaryBin, sleepBin: sleepBin, stepsBin: stepsBin, hrBin: hrBin }

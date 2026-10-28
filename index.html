@@ -38,6 +38,15 @@
     </section>
 
     <section class="result" id="result" hidden aria-live="polite">
+      <div class="vitality">
+        <div class="vitality-head">
+          <span class="vitality-label">今日活力值</span>
+          <span class="vitality-score" id="vitalityScore">-- / 100</span>
+        </div>
+        <div class="vitality-track" id="vitalityTrack" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="今日活力值">
+          <div class="vitality-fill" id="vitalityFill"></div>
+        </div>
+      </div>
       <div class="result-block">
         <h2>活动建议</h2>
         <p id="activityAdvice"></p>
@@ -47,7 +56,6 @@
         <p id="keyAdvice"></p>
       </div>
       <button type="button" id="copyBtn" class="copy-btn">📋 复制建议</button>
-      <p class="match-info" id="matchInfo"></p>
     </section>
 
     <footer class="app-footer">

@@ -3,7 +3,7 @@
 'use strict';
 
 const site = require('./script.js');
-const { getAdvice, bins } = site;
+const { getAdvice, bins, computeVitality } = site;
 
 let pass = 0;
 let fail = 0;
@@ -106,6 +106,18 @@ check('边界 心率70 → normal', bins.hrBin(70), 'normal');
 check('边界 心率71 → high', bins.hrBin(71), 'high');
 check('边界 心率留空(空串) → normal', bins.hrBin(''), 'normal');
 check('边界 心率null → normal', bins.hrBin(null), 'normal');
+
+/* ---------- 今日活力值（100分制，四条件各扣20，保底20） ---------- */
+check('活力 四个条件全中 (7,5,80,2000) → 20', computeVitality(7, 5, 80, 2000), 20);
+check('活力 两扣分 (7,6.5,65,2500) → 60', computeVitality(7, 6.5, 65, 2500), 60);
+check('活力 一扣分 心率留空 (7,8,null,8000) → 80', computeVitality(7, 8, null, 8000), 80);
+check('活力 两扣分 (3,5,65,2000) → 60', computeVitality(3, 5, 65, 2000), 60);
+check('活力 无扣分 (5,6.5,65,4000) → 100', computeVitality(5, 6.5, 65, 4000), 100);
+check('活力 边界 睡眠=6 不扣', computeVitality(3, 6, 65, 8000), 100);
+check('活力 边界 久坐=6 不扣', computeVitality(6, 8, 65, 8000), 100);
+check('活力 边界 步数=3000 不扣', computeVitality(3, 8, 65, 3000), 100);
+check('活力 边界 心率=70 不扣', computeVitality(3, 8, 70, 8000), 100);
+check('活力 全扣且保底 (12,4,90,500) → 20', computeVitality(12, 4, 90, 500), 20);
 
 console.log('--------------------------------');
 console.log('通过 ' + pass + ' 项，失败 ' + fail + ' 项');
