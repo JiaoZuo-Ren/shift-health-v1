@@ -185,8 +185,8 @@
     var vitalityTrack = document.getElementById('vitalityTrack');
     var vitalityFill = document.getElementById('vitalityFill');
     var vitalityScore = document.getElementById('vitalityScore');
-    var tabDay = document.getElementById('tabDay');
-    var tabNight = document.getElementById('tabNight');
+    var modeSwitchBtn = document.getElementById('modeSwitchBtn');
+    var modeStatus = document.getElementById('modeStatus');
     var fieldSedentary = document.getElementById('fieldSedentary');
     var appDesc = document.getElementById('appDesc');
     var appSub = document.getElementById('appSub');
@@ -293,10 +293,7 @@
       if (mode === currentMode) return;
       modeInputs[currentMode] = readInputs();
       currentMode = mode;
-      tabDay.classList.toggle('is-active', mode === 'day');
-      tabDay.setAttribute('aria-selected', mode === 'day');
-      tabNight.classList.toggle('is-active', mode === 'night');
-      tabNight.setAttribute('aria-selected', mode === 'night');
+      modeStatus.textContent = mode === 'day' ? '当前模式：久坐上班族' : '当前模式：夜班/倒时差';
       fieldSedentary.style.display = mode === 'day' ? '' : 'none';
       appDesc.textContent = mode === 'day'
         ? '输入久坐、睡眠、心率、步数，按固定规则给出今天最合适的活动安排。'
@@ -309,8 +306,9 @@
       errEl.hidden = true;
     }
 
-    tabDay.addEventListener('click', function () { setMode('day'); });
-    tabNight.addEventListener('click', function () { setMode('night'); });
+    modeSwitchBtn.addEventListener('click', function () {
+      setMode(currentMode === 'day' ? 'night' : 'day');
+    });
 
     /* 页面加载时显示最近一次测试记录 */
     updateLastTestDisplay();
