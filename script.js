@@ -338,6 +338,21 @@
     return n;
   }
 
+  /* 输入范围校验：一天只有24小时，心率、步数都有合理范围；久坐+睡眠不能超过24小时 */
+  function validateInputs(sedentary, sleep, hr, steps, mode) {
+    if (mode !== 'night') {
+      if (sedentary === null) return '请填写久坐时长（小时），填不小于 0 的数字。';
+      if (sedentary > 24) return '久坐时长不能超过 24 小时，一天只有 24 小时。';
+    }
+    if (sleep === null) return '请填写睡眠时长（小时），填不小于 0 的数字。';
+    if (sleep > 24) return '睡眠时长不能超过 24 小时，一天只有 24 小时。';
+    if (hr !== null && (hr < 30 || hr > 250)) return '静息心率要填 30—250 之间的数字，不知道就留空。';
+    if (steps === null) return '请填写每日步数，填不小于 0 的数字。';
+    if (steps > 100000) return '每日步数不能超过 100000，请核对。';
+    if (mode !== 'night' && sedentary + sleep > 24) return '久坐和睡眠加起来超过 24 小时了，请核对。';
+    return null;
+  }
+
   function init() {
     var btn = document.getElementById('generateBtn');
     var result = document.getElementById('result');
@@ -368,22 +383,16 @@
       var sleep = parseNum(document.getElementById('sleep').value);
       var hrRaw = document.getElementById('hr').value.trim();
       var steps = parseNum(document.getElementById('steps').value);
-
-      if (currentMode === 'day' && sedentary === null) {
-        showError(errEl, '请填写久坐时长（小时），填不小于 0 的数字。');
-        return;
-      }
-      if (sleep === null) {
-        showError(errEl, '请填写睡眠时长（小时），填不小于 0 的数字。');
-        return;
-      }
-      if (steps === null) {
-        showError(errEl, '请填写每日步数，填不小于 0 的数字。');
-        return;
-      }
       var hr = hrRaw === '' ? null : parseNum(hrRaw);
+
       if (hrRaw !== '' && hr === null) {
         showError(errEl, '心率请填不小于 0 的数字，不知道就留空。');
+        return;
+      }
+
+      var errMsg = validateInputs(sedentary, sleep, hr, steps, currentMode);
+      if (errMsg) {
+        showError(errEl, errMsg);
         return;
       }
 
@@ -638,6 +647,7 @@
       RULES: RULES,
       FALLBACK: FALLBACK,
       FALLBACK_KEY: FALLBACK_KEY,
+      validateInputs: validateInputs,
       bins: { sedentaryBin: sedentaryBin, sleepBin: sleepBin, stepsBin: stepsBin, hrBin: hrBin }
     };
   }

@@ -3,7 +3,7 @@
 'use strict';
 
 const site = require('./script.js');
-const { getAdvice, getNightAdvice, bins, computeVitality } = site;
+const { getAdvice, getNightAdvice, bins, computeVitality, validateInputs } = site;
 
 let pass = 0;
 let fail = 0;
@@ -109,6 +109,21 @@ check('边界 心率70 → normal', bins.hrBin(70), 'normal');
 check('边界 心率71 → high', bins.hrBin(71), 'high');
 check('边界 心率留空(空串) → normal', bins.hrBin(''), 'normal');
 check('边界 心率null → normal', bins.hrBin(null), 'normal');
+
+/* ---------- 输入范围校验（严谨性：一天只有24小时） ---------- */
+check('校验 缺久坐 → 报错', validateInputs(null, 5, 65, 2000, 'day') !== null, true);
+check('校验 久坐25 → 报错', validateInputs(25, 5, 65, 2000, 'day') !== null, true);
+check('校验 睡眠25 → 报错', validateInputs(7, 25, 65, 2000, 'day') !== null, true);
+check('校验 久坐0+睡眠24 → 通过', validateInputs(0, 24, 65, 2000, 'day'), null);
+check('校验 心率20 → 报错', validateInputs(7, 5, 20, 2000, 'day') !== null, true);
+check('校验 心率260 → 报错', validateInputs(7, 5, 260, 2000, 'day') !== null, true);
+check('校验 心率留空 → 通过', validateInputs(7, 5, null, 2000, 'day'), null);
+check('校验 步数100001 → 报错', validateInputs(7, 5, 65, 100001, 'day') !== null, true);
+check('校验 步数100000 → 通过', validateInputs(7, 5, 65, 100000, 'day'), null);
+check('校验 久坐20+睡眠5=25 → 报错', validateInputs(20, 5, 65, 2000, 'day') !== null, true);
+check('校验 久坐24+睡眠0=24 → 通过', validateInputs(24, 0, 65, 2000, 'day'), null);
+check('校验 夜班模式不校验久坐 → 通过', validateInputs(null, 5, 65, 2000, 'night'), null);
+check('校验 正常输入 → 通过', validateInputs(7, 5, 80, 2000, 'day'), null);
 
 /* ---------- 今日活力值（100分制，四条件各扣20，保底20） ---------- */
 check('活力 四个条件全中 (7,5,80,2000) → 20', computeVitality(7, 5, 80, 2000), 20);
