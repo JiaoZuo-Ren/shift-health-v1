@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>今日活动建议 - 第一版</title>
-  <link rel="stylesheet" href="style.css?v=5">
+  <link rel="stylesheet" href="style.css?v=6">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f7d5b'/%3E%3Cpath d='M8 17h4l2-6 3 10 2-4h5' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 </head>
 <body>
@@ -57,9 +57,22 @@
           <div class="vitality-fill" id="vitalityFill"></div>
         </div>
       </div>
+      <p class="risk-badge" id="riskBadge" role="status"></p>
       <div class="result-block">
         <h2>活动建议</h2>
         <p id="activityAdvice"></p>
+      </div>
+      <div class="result-block result-taboo">
+        <h2>绝对禁忌</h2>
+        <p id="tabooAdvice"></p>
+      </div>
+      <div class="result-block">
+        <h2>动作处方</h2>
+        <p id="actionAdvice"></p>
+      </div>
+      <div class="result-block">
+        <h2>营养提示</h2>
+        <p id="nutritionAdvice"></p>
       </div>
       <div class="result-block">
         <h2>今天最该做的一件事</h2>
@@ -90,6 +103,7 @@
             <span class="share-score-unit">/ 100</span>
           </div>
           <p class="share-vitality-label">今日活力值</p>
+          <p class="share-risk" id="shareRisk"></p>
           <div class="share-block">
             <h3>活动建议</h3>
             <p id="shareAdvice"></p>
@@ -105,6 +119,6 @@
     </div>
   </main>
   <script src="html2canvas.min.js" onerror="this.onerror=null;this.src='https://fastly.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'"></script>
-  <script src="script.js?v=5"></script>
+  <script src="script.js?v=6"></script>
 </body>
 </html>

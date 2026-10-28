@@ -580,3 +580,63 @@ button:disabled {
   background: #3a4a42;
   color: #93a69b;
 }
+
+/* ================= 状态分级徽标（红灯/黄灯/绿灯） ================= */
+.risk-badge {
+  display: block;
+  margin: 0 0 14px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.risk-red {
+  background: #fdeaea;
+  color: #b3423a;
+  border: 1px solid #f3c6c2;
+}
+
+.risk-yellow {
+  background: #fdf6e3;
+  color: #9c7316;
+  border: 1px solid #ecd9a8;
+}
+
+.risk-green {
+  background: #e7f3ec;
+  color: #2f7d5b;
+  border: 1px solid #c4e0d0;
+}
+
+:root[data-theme="dark"] .risk-red {
+  background: #3a2523;
+  color: #f0a89f;
+  border-color: #5a3a36;
+}
+
+:root[data-theme="dark"] .risk-yellow {
+  background: #332b1c;
+  color: #e6c76a;
+  border-color: #55471f;
+}
+
+:root[data-theme="dark"] .risk-green {
+  background: #1d2f27;
+  color: #7fd3a6;
+  border-color: #2f5342;
+}
+
+/* 绝对禁忌块的标题用警示色 */
+.result-taboo h2 {
+  color: var(--error);
+}
+
+/* 分享卡片上的状态行 */
+.share-risk {
+  margin: 2px 0 14px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffd98a;
+}

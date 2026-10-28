@@ -29,31 +29,142 @@
 
   var FALLBACK_KEY = '今天最该做：中午闭眼休息10分钟，不安排高强度。';
 
+  /* 未列出组合的兜底（主要是心率偏高且睡眠≥6小时） */
+  var FALLBACK = {
+    risk: '黄灯（需警惕）',
+    riskLevel: 'yellow',
+    advice: '睡眠和久坐情况尚可，但心率偏高：今天以中低强度活动为主（快走20分钟，心率别明显升高），并安排一次10分钟闭眼休息。',
+    taboo: '不安排HIIT、大重量抗阻等高强度训练——心率偏高时高强度训练风险大于收益；静息心率经常超过100次/分，或伴有胸痛、头晕、气短，请就医。',
+    action: '保持定时起身；久坐多时每50分钟起身2分钟，再补2分钟髋屈肌拉伸。',
+    nutrition: '下午2点后不再摄入咖啡因；晚餐加富含镁的食物（菠菜、南瓜子）。',
+    key: FALLBACK_KEY
+  };
+
   /* 卡片底部展示的网址（部署后改成你的正式地址） */
   var SITE_URL = 'jiaozuo-ren.github.io';
 
-  /* ================= 规则表（20行，与定稿表一字不差） ================= */
+  /* ================= 规则表（20行：状态分级 + 活动建议 + 绝对禁忌 + 动作处方 + 营养提示 + 今天最该做） ================= */
   var RULES = [
-    { id: 1,  sedentary: 'gt6',  sleep: 'lt6',   hr: 'high',   steps: 'lt3000',     advice: '今天久坐偏多、活动偏少。不建议直接去跑步，先每坐50分钟站起来2分钟，晚饭后散步15分钟；同时睡眠偏少、心率偏高，今天不适合高强度运动。优先补觉，白天加一次10分钟闭眼休息。', key: '今天最该做：中午闭眼休息10分钟，不安排高强度。' },
-    { id: 2,  sedentary: 'gt6',  sleep: 'lt6',   hr: 'high',   steps: '3000to5999', advice: '今天久坐偏多；睡眠偏少、心率偏高，今天不适合高强度运动。优先补觉，白天加一次10分钟闭眼休息，抽空分段走动。', key: '今天最该做：中午闭眼休息10分钟，不安排高强度。' },
-    { id: 3,  sedentary: 'gt6',  sleep: 'lt6',   hr: 'high',   steps: 'gte6000',    advice: '久坐多但活动量够；睡眠偏少、心率偏高，今天不适合高强度运动。优先补觉，白天加一次10分钟闭眼休息，注意每坐50分钟站起来一次，别连续坐满两小时。', key: '今天最该做：中午闭眼休息10分钟，不安排高强度。' },
-    { id: 4,  sedentary: 'gt6',  sleep: 'lt6',   hr: 'normal', steps: 'lt3000',     advice: '今天久坐偏多、活动偏少。不建议直接去跑步，先每坐50分钟站起来2分钟，晚饭后散步15分钟；睡眠偏少，不要安排剧烈运动。', key: '今天最该做：每50分钟站起来2分钟。' },
-    { id: 5,  sedentary: 'gt6',  sleep: 'lt6',   hr: 'normal', steps: '3000to5999', advice: '今天久坐偏多、活动一般，不要安排高强度运动，记得定时起身，有空增加短距离散步。', key: '今天最该做：每50分钟站起来2分钟。' },
-    { id: 6,  sedentary: 'gt6',  sleep: 'lt6',   hr: 'normal', steps: 'gte6000',    advice: '久坐多但活动量够，保持。注意每坐50分钟站起来一次，别连续坐满两小时；睡眠偏少，避免剧烈运动。', key: '今天最该做：保持节奏，别连续坐满两小时。' },
-    { id: 7,  sedentary: 'gt6',  sleep: '6to7',  hr: 'normal', steps: 'lt3000',     advice: '今天久坐偏多、活动偏少。不建议直接去跑步，先每坐50分钟站起来2分钟，晚饭后散步15分钟；睡眠和心率都在可接受范围，今天可以安排20—30分钟低强度活动。', key: '今天最该做：每50分钟站起来2分钟。' },
-    { id: 8,  sedentary: 'gt6',  sleep: '6to7',  hr: 'normal', steps: '3000to5999', advice: '今天久坐偏多，睡眠和心率都在可接受范围，今天可以安排20—30分钟低强度活动，定时起身活动。', key: '今天最该做：每50分钟站起来2分钟。' },
-    { id: 9,  sedentary: 'gt6',  sleep: '6to7',  hr: 'normal', steps: 'gte6000',    advice: '久坐多但活动量够，保持。注意每坐50分钟站起来一次，别连续坐满两小时；睡眠和心率都在可接受范围，今天可以安排20—30分钟低强度活动。', key: '今天最该做：保持节奏，别连续坐满两小时。' },
-    { id: 10, sedentary: 'gt6',  sleep: 'gte7',  hr: 'normal', steps: 'lt3000',     advice: '今天久坐偏多、活动偏少。不建议直接去跑步，先每坐50分钟站起来2分钟，晚饭后散步15分钟；睡眠够，今天可以正常安排活动，避免连续久坐。', key: '今天最该做：每50分钟站起来2分钟。' },
-    { id: 11, sedentary: 'gt6',  sleep: 'gte7',  hr: 'normal', steps: '3000to5999', advice: '今天久坐偏多、活动一般；睡眠够，今天可以正常安排活动，记得定时起身，增加散步。', key: '今天最该做：每50分钟站起来2分钟。' },
-    { id: 12, sedentary: 'gt6',  sleep: 'gte7',  hr: 'normal', steps: 'gte6000',    advice: '久坐多但活动量够，保持。注意每坐50分钟站起来一次，别连续坐满两小时；睡眠够，今天可以正常安排活动，避免连续久坐。', key: '今天最该做：保持节奏，别连续坐满两小时。' },
-    { id: 13, sedentary: 'lt4',  sleep: 'lt6',   hr: 'high',   steps: 'any',        advice: '今天久坐控制得不错，保持；睡眠偏少、心率偏高，今天不适合高强度运动。优先补觉，白天加一次10分钟闭眼休息。', key: '今天最该做：中午闭眼休息10分钟，不安排高强度。' },
-    { id: 14, sedentary: 'lt4',  sleep: 'lt6',   hr: 'normal', steps: 'any',        advice: '今天久坐控制得不错，保持。如果步数够，不用额外加运动；如果步数少，晚饭后散步15分钟。睡眠偏少，避开高强度训练。', key: '今天最该做：每50分钟站起来2分钟。' },
-    { id: 15, sedentary: 'lt4',  sleep: '6to7',  hr: 'normal', steps: 'any',        advice: '今天久坐控制得不错，保持。如果步数够，不用额外加运动；如果步数少，晚饭后散步15分钟。睡眠和心率都在可接受范围，今天可以安排20—30分钟低强度活动。', key: '今天最该做：保持节奏，别连续坐满两小时。' },
-    { id: 16, sedentary: 'lt4',  sleep: 'gte7',  hr: 'normal', steps: 'any',        advice: '今天久坐控制得不错，保持。如果步数够，不用额外加运动；如果步数少，晚饭后散步15分钟。睡眠够，今天可以正常安排活动，避免连续久坐。', key: '今天最该做：保持节奏，别连续坐满两小时。' },
-    { id: 17, sedentary: '4to6', sleep: 'lt6',   hr: 'high',   steps: 'any',        advice: '久坐中等；睡眠偏少、心率偏高，今天不适合高强度运动。优先补觉，白天加一次10分钟闭眼休息，有空分段起身走动。', key: '今天最该做：中午闭眼休息10分钟，不安排高强度。' },
-    { id: 18, sedentary: '4to6', sleep: 'lt6',   hr: 'normal', steps: 'any',        advice: '久坐中等，睡眠偏少，不做高强度运动，每隔一小时起身活动几分钟。', key: '今天最该做：每50分钟站起来2分钟。' },
-    { id: 19, sedentary: '4to6', sleep: '6to7',  hr: 'normal', steps: 'any',        advice: '久坐中等；睡眠和心率都在可接受范围，今天可以安排20—30分钟低强度活动，记得定时起身。', key: '今天最该做：保持节奏，别连续坐满两小时。' },
-    { id: 20, sedentary: '4to6', sleep: 'gte7',  hr: 'normal', steps: 'any',        advice: '久坐中等；睡眠够，今天可以正常安排活动，不要长时间连续坐着。', key: '今天最该做：保持节奏，别连续坐满两小时。' }
+    { id: 1,  sedentary: 'gt6',  sleep: 'lt6',   hr: 'high',   steps: 'lt3000',     risk: '红灯（恢复不足）', riskLevel: 'red',
+      advice: '今天只做轻度主动恢复：20分钟平地慢走，强度以说话不喘为准。先每坐50分钟站起来2分钟，晚饭后散步15分钟补步数。',
+      taboo: '禁止HIIT、大重量抗阻和剧烈有氧——睡眠严重不足且心率偏高时，高强度训练风险大于收益；若静息心率经常超过100次/分，或伴有胸痛、头晕、气短，请就医。',
+      action: '每坐50分钟起身2分钟；做3组靠墙静蹲（每组30—45秒），激活臀部、缓解腰椎压力；膝关节不适就减量或停止。',
+      nutrition: '下午2点后不再摄入咖啡因（睡前6小时摄入仍会明显缩短睡眠）；晚餐加一份深绿叶菜（菠菜）或一把南瓜子补镁。',
+      key: '今天最该做：中午闭眼休息10分钟，不安排高强度。' },
+    { id: 2,  sedentary: 'gt6',  sleep: 'lt6',   hr: 'high',   steps: '3000to5999', risk: '红灯（恢复不足）', riskLevel: 'red',
+      advice: '睡眠不足且心率偏高，今天以恢复为主：20分钟平地慢走即可，白天加一次10分钟闭眼休息，抽空分段起身。',
+      taboo: '禁止HIIT、大重量抗阻和剧烈有氧；静息心率经常超过100次/分，或伴有胸痛、头晕、气短，请就医。',
+      action: '每坐50分钟起身2分钟；做3组靠墙静蹲（每组30—45秒）；肩颈发紧时加2分钟耸肩放松。',
+      nutrition: '下午2点后不再摄入咖啡因；晚餐加菠菜或南瓜子等富含镁的食物。',
+      key: '今天最该做：中午闭眼休息10分钟，不安排高强度。' },
+    { id: 3,  sedentary: 'gt6',  sleep: 'lt6',   hr: 'high',   steps: 'gte6000',    risk: '红灯（恢复不足）', riskLevel: 'red',
+      advice: '步数达标，但睡眠不足、心率偏高：今天只做轻度主动恢复，20分钟慢走即可；注意每坐50分钟站起来一次，别连续坐满两小时。',
+      taboo: '禁止HIIT、大重量抗阻和剧烈有氧——恢复不足时加练只会加深疲劳；静息心率经常超过100次/分请就医。',
+      action: '每坐50分钟起身2分钟；做3组靠墙静蹲（每组30—45秒），缓解久坐带来的腰椎压力。',
+      nutrition: '下午2点后不再摄入咖啡因；晚餐补富含镁的食物（菠菜、南瓜子），帮助身体放松。',
+      key: '今天最该做：中午闭眼休息10分钟，不安排高强度。' },
+    { id: 4,  sedentary: 'gt6',  sleep: 'lt6',   hr: 'normal', steps: 'lt3000',     risk: '黄灯（睡眠不足）', riskLevel: 'yellow',
+      advice: '睡眠不足、步数偏少：今天不安排剧烈运动，晚饭后快走或散步20分钟补步数，白天加一次10分钟闭眼休息。',
+      taboo: '不做高强度训练——睡眠不足时练后恢复差；不靠咖啡硬撑一整天，午后不再喝。',
+      action: '每坐50分钟起身2分钟；做3组靠墙静蹲（每组30—45秒）。',
+      nutrition: '午后不再摄入咖啡因；晚餐加富含镁的食物（菠菜、南瓜子）。',
+      key: '今天最该做：每50分钟站起来2分钟。' },
+    { id: 5,  sedentary: 'gt6',  sleep: 'lt6',   hr: 'normal', steps: '3000to5999', risk: '黄灯（睡眠不足）', riskLevel: 'yellow',
+      advice: '睡眠不足：今天安排20—30分钟低强度活动即可（快走，说话不喘的强度），记得定时起身，别加量。',
+      taboo: '不做高强度训练；午后不再摄入咖啡因，避免影响今晚入睡。',
+      action: '每坐50分钟起身2分钟；做3组靠墙静蹲（每组30—45秒）。',
+      nutrition: '晚餐加富含镁的食物（菠菜、南瓜子），帮助神经放松。',
+      key: '今天最该做：每50分钟站起来2分钟。' },
+    { id: 6,  sedentary: 'gt6',  sleep: 'lt6',   hr: 'normal', steps: 'gte6000',    risk: '黄灯（睡眠不足）', riskLevel: 'yellow',
+      advice: '步数达标，但睡眠不足：今天保持20—30分钟低强度活动即可，不加重；注意每坐50分钟站起来一次，别连续坐满两小时。',
+      taboo: '不做高强度训练；午后不再喝咖啡。',
+      action: '每坐50分钟起身2分钟；做3组靠墙静蹲（每组30—45秒）。',
+      nutrition: '晚餐补富含镁的食物（菠菜、南瓜子）。',
+      key: '今天最该做：保持节奏，别连续坐满两小时。' },
+    { id: 7,  sedentary: 'gt6',  sleep: '6to7',  hr: 'normal', steps: 'lt3000',     risk: '黄灯（久坐偏多）', riskLevel: 'yellow',
+      advice: '久坐偏多、步数偏少：晚饭后快走或散步20分钟补步数，强度以说话不喘为准；今天可安排20—30分钟低强度活动。',
+      taboo: '不建议直接安排跑步或大重量训练日——先把“动起来”解决，再谈强度。',
+      action: '每坐50分钟起身2分钟；做3组靠墙静蹲（每组45秒），缓解腰椎压力。',
+      nutrition: '正常饮食；晚饭后散步，顺便补步数。',
+      key: '今天最该做：每50分钟站起来2分钟。' },
+    { id: 8,  sedentary: 'gt6',  sleep: '6to7',  hr: 'normal', steps: '3000to5999', risk: '黄灯（久坐偏多）', riskLevel: 'yellow',
+      advice: '久坐偏多：今天安排20—30分钟低强度活动（快走，心率控制在110左右或说话不喘），定时起身。',
+      taboo: '今天不加跑量、不加重量，先活动后观察。',
+      action: '每坐50分钟起身2分钟；做3组靠墙静蹲（每组45秒）。',
+      nutrition: '正常饮食；午后咖啡因正常量即可，别过量。',
+      key: '今天最该做：每50分钟站起来2分钟。' },
+    { id: 9,  sedentary: 'gt6',  sleep: '6to7',  hr: 'normal', steps: 'gte6000',    risk: '黄灯（久坐偏多）', riskLevel: 'yellow',
+      advice: '步数达标，久坐偏多：今天可安排20—30分钟低强度活动；注意每坐50分钟站起来一次，别连续坐满两小时。',
+      taboo: '避免长时间连续静坐；不做超出习惯的高强度训练。',
+      action: '每坐50分钟起身2分钟；做3组靠墙静蹲（每组45秒）。',
+      nutrition: '正常饮食即可。',
+      key: '今天最该做：保持节奏，别连续坐满两小时。' },
+    { id: 10, sedentary: 'gt6',  sleep: 'gte7',  hr: 'normal', steps: 'lt3000',     risk: '黄灯（久坐偏多）', riskLevel: 'yellow',
+      advice: '睡眠充足，久坐偏多、步数偏少：晚饭后快走或散步20分钟补步数，今天可正常安排中低强度活动。',
+      taboo: '避免连续久坐；不因“今天状态好”突然上大强度，循序渐进。',
+      action: '每坐50分钟起身2分钟；做3组靠墙静蹲（每组45秒），缓解腰椎压力。',
+      nutrition: '正常饮食即可。',
+      key: '今天最该做：每50分钟站起来2分钟。' },
+    { id: 11, sedentary: 'gt6',  sleep: 'gte7',  hr: 'normal', steps: '3000to5999', risk: '黄灯（久坐偏多）', riskLevel: 'yellow',
+      advice: '睡眠充足，久坐偏多、活动一般：今天可安排30分钟中低强度活动（快走或慢跑），记得定时起身。',
+      taboo: '避免连续静坐超过2小时。',
+      action: '每坐50分钟起身2分钟；做3组靠墙静蹲（每组45秒）。',
+      nutrition: '正常饮食即可。',
+      key: '今天最该做：每50分钟站起来2分钟。' },
+    { id: 12, sedentary: 'gt6',  sleep: 'gte7',  hr: 'normal', steps: 'gte6000',    risk: '黄灯（久坐偏多）', riskLevel: 'yellow',
+      advice: '睡眠充足、步数达标：保持今天的活动节奏，可安排30分钟中低强度活动；注意每坐50分钟站起来一次，别连续坐满两小时。',
+      taboo: '避免连续久坐；不需要额外加练，维持现状即可。',
+      action: '每坐50分钟起身2分钟；久坐累计多时补2分钟髋屈肌拉伸。',
+      nutrition: '正常饮食即可。',
+      key: '今天最该做：保持节奏，别连续坐满两小时。' },
+    { id: 13, sedentary: 'lt4',  sleep: 'lt6',   hr: 'high',   steps: 'any',        risk: '红灯（恢复不足）', riskLevel: 'red',
+      advice: '久坐控制得不错，但睡眠不足、心率偏高：今天只做轻度活动（20分钟慢走），白天加一次10分钟闭眼休息，优先补觉。',
+      taboo: '禁止HIIT、大重量抗阻和剧烈有氧；静息心率经常超过100次/分，或伴有不适，请就医。',
+      action: '久坐不多，保持每小时起身活动几分钟即可；睡前做5分钟放松拉伸（大腿后侧加肩颈）。',
+      nutrition: '下午2点后不再摄入咖啡因；晚餐加富含镁的食物（菠菜、南瓜子），帮助放松。',
+      key: '今天最该做：中午闭眼休息10分钟，不安排高强度。' },
+    { id: 14, sedentary: 'lt4',  sleep: 'lt6',   hr: 'normal', steps: 'any',        risk: '黄灯（睡眠不足）', riskLevel: 'yellow',
+      advice: '久坐控制得不错，睡眠不足：步数够就保持，不用额外加运动；步数少就晚饭后散步15分钟。避开高强度训练。',
+      taboo: '不做高强度训练；午后不再喝咖啡，保证今晚能早睡。',
+      action: '保持每小时起身活动几分钟；睡前做5分钟放松拉伸。',
+      nutrition: '晚餐加富含镁的食物（菠菜、南瓜子）。',
+      key: '今天最该做：每50分钟站起来2分钟。' },
+    { id: 15, sedentary: 'lt4',  sleep: '6to7',  hr: 'normal', steps: 'any',        risk: '绿灯（状态良好）', riskLevel: 'green',
+      advice: '久坐少、睡眠和心率都正常：步数够就保持，不用额外加运动；步数少就晚饭后散步15分钟。可安排20—30分钟中低强度活动。',
+      taboo: '没有特别禁忌；只是别在睡前2小时内做剧烈运动。',
+      action: '久坐不多，保持定时起身即可；久坐累计多时补2分钟髋屈肌拉伸。',
+      nutrition: '正常饮食即可。',
+      key: '今天最该做：保持节奏，别连续坐满两小时。' },
+    { id: 16, sedentary: 'lt4',  sleep: 'gte7',  hr: 'normal', steps: 'any',        risk: '绿灯（状态良好）', riskLevel: 'green',
+      advice: '睡眠充足、久坐少：状态良好，今天可以正常安排活动（30分钟中低强度均可）；步数少就晚饭后散步20分钟。',
+      taboo: '没有特别禁忌；只是别连续静坐超过2小时。',
+      action: '保持定时起身；久坐累计多时补2分钟髋屈肌拉伸。',
+      nutrition: '正常饮食即可。',
+      key: '今天最该做：保持节奏，别连续坐满两小时。' },
+    { id: 17, sedentary: '4to6', sleep: 'lt6',   hr: 'high',   steps: 'any',        risk: '红灯（恢复不足）', riskLevel: 'red',
+      advice: '睡眠不足且心率偏高：今天只做轻度主动恢复（20分钟慢走），白天加一次10分钟闭眼休息，优先补觉。',
+      taboo: '禁止HIIT、大重量抗阻和剧烈有氧；静息心率经常超过100次/分请就医。',
+      action: '每小时起身活动几分钟；做2分钟髋屈肌弓步拉伸，缓解久坐紧绷。',
+      nutrition: '下午2点后不再摄入咖啡因；晚餐加菠菜或南瓜子补镁。',
+      key: '今天最该做：中午闭眼休息10分钟，不安排高强度。' },
+    { id: 18, sedentary: '4to6', sleep: 'lt6',   hr: 'normal', steps: 'any',        risk: '黄灯（睡眠不足）', riskLevel: 'yellow',
+      advice: '睡眠不足：今天不安排剧烈运动，可做20—30分钟低强度活动（快走），每隔一小时起身活动几分钟。',
+      taboo: '不做高强度训练；午后不再喝咖啡。',
+      action: '每小时起身活动几分钟；睡前做5分钟放松拉伸。',
+      nutrition: '晚餐加富含镁的食物（菠菜、南瓜子）。',
+      key: '今天最该做：每50分钟站起来2分钟。' },
+    { id: 19, sedentary: '4to6', sleep: '6to7',  hr: 'normal', steps: 'any',        risk: '绿灯（状态良好）', riskLevel: 'green',
+      advice: '睡眠、心率、久坐都在可接受范围：今天可安排20—30分钟中低强度活动（快走或慢跑），记得定时起身。',
+      taboo: '没有特别禁忌；睡前2小时内不做剧烈运动。',
+      action: '保持定时起身；久坐累计多时补2分钟髋屈肌拉伸。',
+      nutrition: '正常饮食即可。',
+      key: '今天最该做：保持节奏，别连续坐满两小时。' },
+    { id: 20, sedentary: '4to6', sleep: 'gte7',  hr: 'normal', steps: 'any',        risk: '绿灯（状态良好）', riskLevel: 'green',
+      advice: '睡眠充足、状态良好：今天可以正常安排活动（30分钟中低强度均可），不要长时间连续坐着。',
+      taboo: '没有特别禁忌；只是别连续静坐超过2小时。',
+      action: '保持定时起身；久坐累计多时补2分钟髋屈肌拉伸。',
+      nutrition: '正常饮食即可。',
+      key: '今天最该做：保持节奏，别连续坐满两小时。' }
   ];
 
   /* ================= 匹配 ================= */
@@ -74,15 +185,28 @@
     /* 优先精准匹配 */
     for (var i = 0; i < RULES.length; i++) {
       if (matchRule(RULES[i], sBin, slBin, hBin, stBin)) {
-        return { row: RULES[i].id, advice: RULES[i].advice, key: RULES[i].key, fallback: false };
+        var m = RULES[i];
+        return {
+          row: m.id,
+          risk: m.risk, riskLevel: m.riskLevel,
+          advice: m.advice, taboo: m.taboo,
+          action: m.action, nutrition: m.nutrition,
+          key: m.key, fallback: false
+        };
       }
     }
 
-    /* 兜底：表内没有的组合 → 同久坐、同睡眠、心率正常那行的活动建议 + 固定“今天最该做” */
+    /* 兜底：表内没有的组合（主要是心率偏高且睡眠≥6小时）→ 统一走黄灯兜底文案 */
     for (var j = 0; j < RULES.length; j++) {
       var r = RULES[j];
       if (r.sedentary === sBin && r.sleep === slBin && r.hr === 'normal' && (r.steps === 'any' || r.steps === stBin)) {
-        return { row: r.id, advice: r.advice, key: FALLBACK_KEY, fallback: true };
+        return {
+          row: r.id,
+          risk: FALLBACK.risk, riskLevel: FALLBACK.riskLevel,
+          advice: FALLBACK.advice, taboo: FALLBACK.taboo,
+          action: FALLBACK.action, nutrition: FALLBACK.nutrition,
+          key: FALLBACK.key, fallback: true
+        };
       }
     }
 
@@ -104,18 +228,53 @@
   function getNightAdvice(sleep, hr, steps) {
     var hrHigh = hr !== null && hr > 70;
     if (sleep < 5 && hrHigh) {
-      return { advice: '建议今天必须优先补觉，白天避光，不安排任何高强度活动。', key: '今天最该做：白天避光补觉，不安排高强度。' };
+      return {
+        risk: '红灯（恢复不足）', riskLevel: 'red',
+        advice: '夜班后睡眠严重不足且心率偏高：今天必须优先补觉，白天拉窗帘避光，只做轻度活动（慢走15分钟），不安排任何高强度活动。',
+        taboo: '禁止HIIT、大重量抗阻和剧烈有氧；静息心率经常超过100次/分，或伴有胸痛、头晕、气短，请就医。',
+        action: '醒后见光10分钟帮助校准生物钟；久坐时每小时起身活动几分钟。',
+        nutrition: '下午2点后不再摄入咖啡因；晚餐加富含镁的食物（菠菜、南瓜子）。',
+        key: '今天最该做：白天避光补觉，不安排高强度。'
+      };
     }
     if (sleep < 5) {
-      return { advice: '睡眠不足5小时，今天优先补觉，白天避光，不安排高强度活动。', key: '今天最该做：补觉，不安排高强度。' };
+      return {
+        risk: '黄灯（睡眠不足）', riskLevel: 'yellow',
+        advice: '睡眠不足5小时：今天优先补觉，白天避光，只做轻度活动（慢走15分钟）。',
+        taboo: '不做高强度训练；午后不再喝咖啡。',
+        action: '白天避光休息；醒后见光10分钟。',
+        nutrition: '晚餐加富含镁的食物（菠菜、南瓜子）；下午2点后不摄入咖啡因。',
+        key: '今天最该做：补觉，不安排高强度。'
+      };
     }
     if (sleep < 7) {
       if (steps < 3000) {
-        return { advice: '建议这是正常现象，不用焦虑，醒后见光10分钟，散步20分钟。', key: '今天最该做：醒后见光10分钟，散步20分钟。' };
+        return {
+          risk: '黄灯（夜班正常现象）', riskLevel: 'yellow',
+          advice: '夜班后睡眠5—7小时是正常现象，不用焦虑：醒后见光10分钟，散步20分钟补活动量。',
+          taboo: '不需要“补练”——夜班后不做高强度训练，先把作息调稳。',
+          action: '醒后见光10分钟；散步20分钟，强度以说话不喘为准。',
+          nutrition: '醒来后先吃一顿规律正餐，别空腹灌咖啡；全天咖啡因控制在1杯以内。',
+          key: '今天最该做：醒后见光10分钟，散步20分钟。'
+        };
       }
-      return { advice: '睡眠和活动量都够，保持现状，醒后见光10分钟。', key: '今天最该做：保持节奏，醒后见光10分钟。' };
+      return {
+        risk: '绿灯（状态良好）', riskLevel: 'green',
+        advice: '睡眠和活动量都够：保持现状，醒后见光10分钟，今天可安排20—30分钟中低强度活动。',
+        taboo: '不做高强度训练——夜班后身体仍在恢复；晚间不喝咖啡。',
+        action: '醒后见光10分钟；保持定时起身。',
+        nutrition: '正常饮食；下午2点后不摄入咖啡因。',
+        key: '今天最该做：保持节奏，醒后见光10分钟。'
+      };
     }
-    return { advice: '说明补觉充足，今天可以正常安排活动，但避免在晚间喝咖啡。', key: '今天最该做：保持正常活动，晚上不喝咖啡。' };
+    return {
+      risk: '绿灯（状态良好）', riskLevel: 'green',
+      advice: '补觉充足：今天可以正常安排活动（30分钟中低强度均可），但避免在晚间喝咖啡。',
+      taboo: '晚间不摄入咖啡因——睡前6小时摄入仍会明显缩短睡眠；不做超出习惯的高强度训练。',
+      action: '正常活动即可；久坐时每小时起身几分钟。',
+      nutrition: '晚餐后不再摄入咖啡因；正常饮食即可。',
+      key: '今天最该做：保持正常活动，晚上不喝咖啡。'
+    };
   }
 
   /* ================= 最近一次测试（localStorage） ================= */
@@ -183,6 +342,10 @@
     var btn = document.getElementById('generateBtn');
     var result = document.getElementById('result');
     var activityEl = document.getElementById('activityAdvice');
+    var tabooEl = document.getElementById('tabooAdvice');
+    var actionEl = document.getElementById('actionAdvice');
+    var nutritionEl = document.getElementById('nutritionAdvice');
+    var riskBadge = document.getElementById('riskBadge');
     var keyEl = document.getElementById('keyAdvice');
     var errEl = document.getElementById('formError');
     var vitalityTrack = document.getElementById('vitalityTrack');
@@ -236,7 +399,12 @@
         if (!out) {
           showError(errEl, '没有匹配到规则，请检查输入。');
         } else {
+          riskBadge.textContent = out.risk;
+          riskBadge.className = 'risk-badge risk-' + out.riskLevel;
           activityEl.textContent = out.advice;
+          tabooEl.textContent = out.taboo;
+          actionEl.textContent = out.action;
+          nutritionEl.textContent = out.nutrition;
           keyEl.textContent = out.key;
           var vitality = computeVitality(sedentary, sleep, hr, steps);
           lastOut = out;
@@ -264,7 +432,9 @@
         showToast('还没有结果，先点“生成今天的建议”');
         return;
       }
-      var text = '【活动建议】' + advice + '\n【今天最该做的一件事】' + key;
+      var text = '【今日状态】' + riskBadge.textContent + '\n【活动建议】' + advice +
+        '\n【绝对禁忌】' + tabooEl.textContent + '\n【动作处方】' + actionEl.textContent +
+        '\n【营养提示】' + nutritionEl.textContent + '\n【今天最该做的一件事】' + key;
       copyText(text).then(
         function () { showToast('已复制'); },
         function () { showToast('复制失败，请手动选中文字复制'); }
@@ -289,6 +459,7 @@
       shareBtn.textContent = '生成中…';
       document.getElementById('shareMode').textContent = currentMode === 'day' ? '久坐上班族' : '夜班/倒时差';
       document.getElementById('shareScore').textContent = lastVitality;
+      document.getElementById('shareRisk').textContent = lastOut.risk;
       document.getElementById('shareAdvice').textContent = lastOut.advice;
       document.getElementById('shareKey').textContent = lastOut.key;
       var now = new Date();
@@ -465,6 +636,7 @@
       formatMonthDay: formatMonthDay,
       getLastTestText: getLastTestText,
       RULES: RULES,
+      FALLBACK: FALLBACK,
       FALLBACK_KEY: FALLBACK_KEY,
       bins: { sedentaryBin: sedentaryBin, sleepBin: sleepBin, stepsBin: stepsBin, hrBin: hrBin }
     };
