@@ -97,6 +97,57 @@
     return score;
   }
 
+  /* ================= 最近一次测试（localStorage） ================= */
+  function formatMonthDay(dateStr) {
+    var parts = String(dateStr).split('-');
+    if (parts.length === 3) {
+      return parseInt(parts[1], 10) + '月' + parseInt(parts[2], 10) + '日';
+    }
+    return dateStr;
+  }
+
+  function getLastTestText(rec) {
+    if (!rec || !rec.date || typeof rec.vitality !== 'number') return null;
+    return '你上次测试是在：' + formatMonthDay(rec.date) + '，当时活力值：' + rec.vitality + '分';
+  }
+
+  function saveLastTest(sedentary, sleep, hr, steps, vitality) {
+    try {
+      var now = new Date();
+      var record = {
+        date: now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate(),
+        sedentary: sedentary,
+        sleep: sleep,
+        hr: hr,
+        steps: steps,
+        vitality: vitality
+      };
+      localStorage.setItem('shiftHealthLastTest', JSON.stringify(record));
+    } catch (e) {
+      /* localStorage 不可用时静默跳过，不影响主流程 */
+    }
+  }
+
+  function updateLastTestDisplay() {
+    var el = document.getElementById('lastTest');
+    if (!el) return;
+    var text = null;
+    try {
+      var raw = localStorage.getItem('shiftHealthLastTest');
+      if (raw) {
+        text = getLastTestText(JSON.parse(raw));
+      }
+    } catch (e) {
+      text = null;
+    }
+    if (!text) {
+      el.hidden = true;
+      return;
+    }
+    el.textContent = text;
+    el.hidden = false;
+  }
+
   /* ================= 页面逻辑 ================= */
   function parseNum(v) {
     var s = String(v).trim();
@@ -158,6 +209,8 @@
           vitalityFill.style.width = vitality + '%';
           vitalityScore.textContent = vitality + ' / 100';
           vitalityTrack.setAttribute('aria-valuenow', vitality);
+          saveLastTest(sedentary, sleep, hr, steps, vitality);
+          updateLastTestDisplay();
           result.hidden = false;
           result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
@@ -188,6 +241,9 @@
         btn.click();
       }
     });
+
+    /* 页面加载时显示最近一次测试记录 */
+    updateLastTestDisplay();
   }
 
   function showError(errEl, msg) {
@@ -242,6 +298,8 @@
     module.exports = {
       getAdvice: getAdvice,
       computeVitality: computeVitality,
+      formatMonthDay: formatMonthDay,
+      getLastTestText: getLastTestText,
       RULES: RULES,
       FALLBACK_KEY: FALLBACK_KEY,
       bins: { sedentaryBin: sedentaryBin, sleepBin: sleepBin, stepsBin: stepsBin, hrBin: hrBin }

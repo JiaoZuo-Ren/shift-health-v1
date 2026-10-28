@@ -119,6 +119,14 @@ check('活力 边界 步数=3000 不扣', computeVitality(3, 8, 65, 3000), 100);
 check('活力 边界 心率=70 不扣', computeVitality(3, 8, 70, 8000), 100);
 check('活力 全扣且保底 (12,4,90,500) → 20', computeVitality(12, 4, 90, 500), 20);
 
+/* ---------- 最近一次测试（localStorage 文案逻辑） ---------- */
+check('上次测试 日期格式化 2026-10-28 → 10月28日', site.formatMonthDay('2026-10-28'), '10月28日');
+check('上次测试 日期格式化 2026-01-05 → 1月5日', site.formatMonthDay('2026-01-05'), '1月5日');
+check('上次测试 文案生成', site.getLastTestText({ date: '2026-10-28', vitality: 80 }), '你上次测试是在：10月28日，当时活力值：80分');
+check('上次测试 无记录返回null', site.getLastTestText(null), null);
+check('上次测试 缺日期字段返回null', site.getLastTestText({ vitality: 80 }), null);
+check('上次测试 缺活力值字段返回null', site.getLastTestText({ date: '2026-10-28' }), null);
+
 console.log('--------------------------------');
 console.log('通过 ' + pass + ' 项，失败 ' + fail + ' 项');
 process.exit(fail > 0 ? 1 : 0);

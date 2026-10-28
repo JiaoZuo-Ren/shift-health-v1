@@ -298,6 +298,12 @@ button:disabled {
   color: var(--muted);
 }
 
+.last-test {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
 @media (max-width: 480px) {
   .app {
     padding: 26px 16px;
