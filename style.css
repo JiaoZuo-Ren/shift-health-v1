@@ -37,6 +37,9 @@
   --error: #b3423a;
   --toast-bg: rgba(24, 42, 35, 0.92);
 
+  /* 底部抽屉面板：比普通毛玻璃更实一点，保证长内容可读 */
+  --sheet-bg: rgba(250, 253, 255, 0.93);
+
   --ring-track: rgba(24, 42, 35, 0.10);
   --ring-inner: rgba(255, 255, 255, 0.9);
 }
@@ -72,6 +75,8 @@
 
   --error: #ff9b91;
   --toast-bg: rgba(20, 28, 48, 0.92);
+
+  --sheet-bg: rgba(14, 20, 36, 0.94);
 
   --ring-track: rgba(255, 255, 255, 0.12);
   --ring-inner: rgba(18, 24, 40, 0.9);
@@ -361,8 +366,229 @@ button:focus-visible,
   outline-offset: 2px;
 }
 
-/* ---------- 结果区 ---------- */
-.result { margin-top: 22px; }
+/* ---------- 结果抽屉（Bottom Sheet）：遮罩 + 从底部滑出的面板 ---------- */
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 75;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;       /* 面板停在屏幕外时不再撑出滚动条 */
+  pointer-events: none;   /* 面板没滑出前不拦截页面点击 */
+}
+
+.sheet-overlay[hidden] { display: none; }
+
+.sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 16, 24, 0.38);
+  opacity: 0;
+  transition: opacity 0.36s ease;
+  -webkit-backdrop-filter: blur(10px) saturate(130%);
+  backdrop-filter: blur(10px) saturate(130%);
+  pointer-events: auto;   /* 父层是 none，这里必须显式打开才能接住“点遮罩关闭” */
+}
+
+.sheet-overlay.is-open .sheet-backdrop { opacity: 1; }
+
+.sheet {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 600px;
+  max-height: min(90vh, 940px);
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  border-radius: 26px 26px 0 0;
+  background: var(--sheet-bg);
+  border: 1px solid var(--glass-border);
+  border-bottom: 0;
+  box-shadow: 0 -22px 60px rgba(10, 20, 16, 0.34);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  backdrop-filter: blur(20px) saturate(140%);
+  transform: translateY(100%);
+  transition: transform 0.44s cubic-bezier(0.22, 0.85, 0.25, 1),
+              background 0.6s ease, border-color 0.6s ease;
+  pointer-events: auto;
+  overflow: hidden;   /* 滚动交给 .sheet-body，避免头部跟着滚走 */
+  will-change: transform;
+}
+
+.sheet-overlay.is-open .sheet { transform: translateY(0); }
+
+/* 顶部小横条：手机底部指示条的感觉 */
+.sheet-grip {
+  display: flex;
+  justify-content: center;
+  padding: 10px 0 4px;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.sheet-grip span {
+  width: 46px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+/* 标题栏固定在面板顶部，滚动时关闭按钮始终可点 */
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 18px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.sheet-head h2 {
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  color: var(--ink);
+}
+
+.sheet-body {
+  flex: 1 1 auto;
+  min-height: 0;   /* 关键：让面板内部正确滚动 */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 16px 16px 22px;
+}
+
+/* 面板里的每一块：浅色卡片，不再叠一层高斯模糊（移动端 GPU 吃不住） */
+.sheet-body .panel {
+  margin: 0 0 14px;
+  padding: 18px 16px;
+  border-radius: 18px;
+  background: var(--glass-inner);
+  border: 1px solid var(--glass-border);
+}
+
+.sheet-body .panel:last-child { margin-bottom: 0; }
+
+/* 环形与「最该做的一件事」保留各自的强调底色（.panel 的基础样式会覆盖它们） */
+.sheet-body .ring-panel { padding: 20px 16px 16px; }
+
+.sheet-body .key-panel {
+  background: linear-gradient(135deg, rgba(47, 133, 90, 0.16), rgba(107, 70, 193, 0.10));
+}
+
+.sheet-body .breathe-panel {
+  margin-top: 0;
+  padding-top: 18px;
+}
+
+.sheet-body .breathe-panel::before { display: none; }
+
+.sheet-body .actions {
+  margin-top: 4px;
+  margin-bottom: 14px;
+}
+
+/* ---------- 底部固定操作栏：AI 私教 / 深呼吸两个平行入口 ----------
+   固定在抽屉底部，不参与内容滚动，也不占首屏 ——
+   抽屉一打开第一眼看到的是环形 + 建议，这两个入口随时在手边 */
+.sheet-dock {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 10px;
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--line);
+  background: var(--sheet-bg);
+}
+
+.dock-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-inner);
+  color: var(--ink);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.22s ease, background 0.3s ease;
+}
+
+.dock-btn:active { transform: scale(0.965); }
+
+.dock-ico { font-size: 19px; line-height: 1; flex: 0 0 auto; }
+
+.dock-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.dock-txt strong {
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.dock-txt em {
+  font-style: normal;
+  font-size: 11.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 两个入口用各自的强调色区分：紫 = AI，绿 = 呼吸 */
+.dock-ai {
+  border-color: rgba(107, 70, 193, 0.42);
+  background: linear-gradient(135deg, rgba(107, 70, 193, 0.16), rgba(107, 70, 193, 0.04));
+  box-shadow: 0 8px 20px rgba(107, 70, 193, 0.14);
+}
+
+.dock-ai .dock-txt strong { color: var(--ai); }
+
+.dock-breathe {
+  border-color: rgba(47, 133, 90, 0.42);
+  background: linear-gradient(135deg, rgba(47, 133, 90, 0.16), rgba(47, 133, 90, 0.04));
+  box-shadow: 0 8px 20px rgba(47, 133, 90, 0.12);
+}
+
+.dock-breathe .dock-txt strong { color: var(--accent); }
+
+/* ---------- AI 私教抽屉：叠在结果抽屉上的第二层 ---------- */
+.sheet-overlay--ai { z-index: 78; }
+
+.sheet--ai {
+  max-height: min(76vh, 720px);
+  border-radius: 24px 24px 0 0;
+}
+
+.sheet--ai .sheet-body { padding-top: 14px; }
+
+.sheet--ai .ai-section {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.panel-cap {
+  margin: 0 0 12px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+/* 抽屉打开时锁住背景滚动，避免手指滑到底后带动整页 */
+body.sheet-open { overflow: hidden; }
 
 .panel {
   padding: 22px;
@@ -885,7 +1111,7 @@ button:focus-visible,
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.22s ease, transform 0.22s ease;
-  z-index: 80;
+  z-index: 120;
 }
 
 .toast.show {
@@ -964,7 +1190,7 @@ button:focus-visible,
 .share-overlay {
   position: fixed;
   inset: 0;
-  z-index: 70;
+  z-index: 95;
   display: none;
   padding: 24px;
   overflow: auto;
@@ -990,7 +1216,7 @@ button:focus-visible,
   color: #22302a;
   cursor: pointer;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
-  z-index: 71;
+  z-index: 96;
 }
 
 .share-card {
@@ -1179,7 +1405,7 @@ button:focus-visible,
 .breathe-overlay {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: 90;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1326,7 +1552,9 @@ button:focus-visible,
 @media (max-width: 480px) {
   .app { padding: 74px 16px 34px; }
   .app-header h1 { font-size: 25px; }
-  .ring-score { font-size: 52px; }
+  /* 手机上把环形略收一点，让「状态诊断」整块也能落进首屏 */
+  .ring-wrap { width: min(212px, 56vw); }
+  .ring-score { font-size: 47px; }
   .ring-emoji { font-size: 27px; right: -2%; }
   .panel { padding: 18px; }
   .actions { flex-direction: column; }
@@ -1336,6 +1564,20 @@ button:focus-visible,
     margin-top: 30px;
     padding-top: 26px;
   }
+
+  /* 抽屉：手机上更高一点，圆角小一点，内容区留足手指滑动空间 */
+  .sheet {
+    max-height: 93vh;
+    border-radius: 22px 22px 0 0;
+  }
+  .sheet--ai { max-height: 80vh; }
+  .sheet-head { padding: 2px 14px 10px; }
+  .sheet-body { padding: 12px 12px 20px; }
+  .sheet-body .panel { padding: 16px 14px; border-radius: 16px; }
+  .sheet-dock { padding: 9px 12px 11px; gap: 9px; }
+  .dock-btn { padding: 10px; gap: 8px; }
+  .dock-txt strong { font-size: 14px; }
+  .dock-txt em { font-size: 11px; }
 
   /* 手机上大面积高斯模糊非常吃 GPU：缩小模糊半径、去掉一层光斑，
      否则滚动和点击会明显发涩 */
@@ -1364,6 +1606,10 @@ button:focus-visible,
   .blob { animation: none; }
   .ring-bar { transition: none; }
   * { animation-duration: 0.001ms !important; }
+
+  /* 抽屉改成直接出现，不做位移动画 */
+  .sheet { transition: none; }
+  .sheet-backdrop { transition: none; }
 
   /* 例外：呼吸球换成透明度节奏，既不做缩放，又不丢呼吸引导 */
   .breathe-overlay.is-open .breathe-ball {

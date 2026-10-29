@@ -2,7 +2,7 @@
 <html lang="zh-CN" data-theme="day">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>今日活动建议 · 久坐人群健康仪表盘</title>
   <!-- 首屏先按时钟定主题，避免夜间打开时先闪一下亮色 -->
   <script>
@@ -11,7 +11,7 @@
       document.documentElement.setAttribute('data-theme', (h >= 6 && h < 18) ? 'day' : 'night');
     })();
   </script>
-  <link rel="stylesheet" href="style.css?v=15">
+  <link rel="stylesheet" href="style.css?v=18">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f7d5b'/%3E%3Cpath d='M8 17h4l2-6 3 10 2-4h5' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <!-- Open Graph：分享到微信/社交平台时展示的标题、简介和缩略图 -->
   <meta property="og:type" content="website">
@@ -52,7 +52,7 @@
       <p class="mode-hint">点一下切换模式</p>
     </header>
 
-    <!-- 输入区 -->
+    <!-- 首页只保留输入表单，结果全部放进底部抽屉 -->
     <section class="glass form-card" aria-label="输入数据">
       <div class="field" id="fieldSedentary">
         <label for="sedentary">昨日久坐时长（小时）</label>
@@ -78,88 +78,6 @@
       <p id="formError" class="form-error" role="alert" hidden></p>
     </section>
 
-    <!-- 结果区 -->
-    <section class="result" id="result" hidden aria-live="polite">
-
-      <!-- 巨大的动态环形活力值 -->
-      <div class="glass panel ring-panel">
-        <div class="ring-wrap">
-          <svg class="ring" viewBox="0 0 220 220" role="img" aria-label="今日活力值环形进度">
-            <circle class="ring-track" cx="110" cy="110" r="92"></circle>
-            <circle class="ring-bar" id="ringBar" cx="110" cy="110" r="92"></circle>
-          </svg>
-          <div class="ring-center">
-            <span class="ring-score" id="vitalityScore">--</span>
-            <span class="ring-label">今日活力值</span>
-          </div>
-          <!-- 动态情绪小精灵：随分数换图标和动画 -->
-          <span class="ring-emoji" id="ringEmoji" aria-hidden="true">🙂</span>
-        </div>
-        <p class="ring-tip" id="ringTip">满分 100 分，四项指标各扣 20 分</p>
-      </div>
-
-      <!-- 模块一：状态诊断 -->
-      <div class="glass panel">
-        <h2><span class="panel-ico">💡</span>状态诊断</h2>
-        <p class="risk-badge" id="riskBadge"></p>
-        <p class="cause" id="causeExplain"></p>
-        <p class="panel-text" id="activityAdvice"></p>
-        <p class="taboo" id="tabooAdvice"></p>
-      </div>
-
-      <!-- 模块二：运动与拉伸处方 -->
-      <div class="glass panel">
-        <h2><span class="panel-ico">🏃</span>运动与拉伸处方</h2>
-        <p class="panel-text" id="actionAdvice"></p>
-        <p class="panel-text sub" id="microAdvice"></p>
-      </div>
-
-      <!-- 模块三：饮食与营养干预 -->
-      <div class="glass panel">
-        <h2><span class="panel-ico">🥗</span>饮食与营养干预</h2>
-        <p class="panel-text" id="nutritionAdvice"></p>
-        <p class="panel-text sub" id="hydrationAdvice"></p>
-      </div>
-
-      <!-- 今天最该做的一件事 -->
-      <div class="glass panel key-panel">
-        <h2><span class="panel-ico">🎯</span>今天最该做的一件事</h2>
-        <p class="key-text" id="keyAdvice"></p>
-      </div>
-
-      <!-- AI 私教：按钮 + 隐藏卡片 + 追问输入框 -->
-      <div class="glass panel ai-section">
-        <button type="button" id="aiBtn" class="ai-btn">🤖 听听AI私教怎么说</button>
-        <div id="ai-card" class="ai-card" hidden>
-          <p class="ai-title">🤖 AI 私教补充建议</p>
-          <div class="ai-content" id="aiReply" aria-live="polite"></div>
-          <button type="button" id="aiRetryBtn" class="ai-retry" hidden>↻ 再试一次</button>
-          <form class="ai-ask" id="aiAskForm" autocomplete="off">
-            <input type="text" id="aiQuestion" placeholder="还想追问点什么？例如：晚上能跑步吗" maxlength="120">
-            <button type="submit" id="aiAskBtn">追问</button>
-          </form>
-        </div>
-
-        <!-- 不花钱的情绪彩蛋：本地数组随机，不调用接口 -->
-        <div class="fortune">
-          <button type="button" id="fortuneBtn" class="fortune-btn">🎲 抽一句今日能量签</button>
-          <p class="fortune-text" id="fortuneText" aria-live="polite"></p>
-        </div>
-      </div>
-
-      <div class="actions">
-        <button type="button" id="copyBtn" class="ghost-btn">📋 复制建议</button>
-        <button type="button" id="shareBtn" class="ghost-btn">生成今日数据卡片</button>
-      </div>
-
-      <!-- 情绪价值：60 秒深呼吸放松 -->
-      <div class="glass panel breathe-panel">
-        <h2><span class="panel-ico">🧘</span>别被数字牵着走</h2>
-        <p class="panel-text sub">数据只是参考。如果现在心跳快、心里烦，先跟着球呼吸 60 秒，比看更多指标有用。</p>
-        <button type="button" id="breatheBtn" class="breathe-open">🧘 开启 60 秒深呼吸放松</button>
-      </div>
-    </section>
-
     <footer class="app-footer">
       <p>本工具只做固定规则判断，不构成医疗建议。</p>
       <p class="last-test" id="lastTest" hidden></p>
@@ -169,6 +87,129 @@
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
   </main>
+
+  <!-- ================= 结果抽屉：遮罩 + 从底部滑出的面板 ================= -->
+  <div id="resultOverlay" class="sheet-overlay" aria-hidden="true" hidden>
+    <div class="sheet-backdrop" data-sheet-close="1"></div>
+
+    <section id="result" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" aria-live="polite" tabindex="-1">
+      <!-- 顶部小横条：手机底部指示条的感觉，点它也能关 -->
+      <div class="sheet-grip" id="sheetGrip" aria-hidden="true"><span></span></div>
+
+      <!-- 固定不动的标题栏，滚动时始终能点关闭 -->
+      <div class="sheet-head">
+        <h2 id="sheetTitle">今日建议</h2>
+        <button type="button" id="resultClose" class="icon-btn" aria-label="关闭结果">×</button>
+      </div>
+
+      <div class="sheet-body" id="sheetBody">
+
+        <!-- 巨大的动态环形活力值 -->
+        <div class="panel ring-panel">
+          <div class="ring-wrap">
+            <svg class="ring" viewBox="0 0 220 220" role="img" aria-label="今日活力值环形进度">
+              <circle class="ring-track" cx="110" cy="110" r="92"></circle>
+              <circle class="ring-bar" id="ringBar" cx="110" cy="110" r="92"></circle>
+            </svg>
+            <div class="ring-center">
+              <span class="ring-score" id="vitalityScore">--</span>
+              <span class="ring-label">今日活力值</span>
+            </div>
+            <!-- 动态情绪小精灵：随分数换图标和动画 -->
+            <span class="ring-emoji" id="ringEmoji" aria-hidden="true">🙂</span>
+          </div>
+          <p class="ring-tip" id="ringTip">满分 100 分，四项指标各扣 20 分</p>
+        </div>
+
+        <!-- 模块一：状态诊断 -->
+        <div class="panel">
+          <h2><span class="panel-ico">💡</span>状态诊断</h2>
+          <p class="risk-badge" id="riskBadge"></p>
+          <p class="cause" id="causeExplain"></p>
+          <p class="panel-text" id="activityAdvice"></p>
+          <p class="taboo" id="tabooAdvice"></p>
+        </div>
+
+        <!-- 模块二：运动与拉伸处方 -->
+        <div class="panel">
+          <h2><span class="panel-ico">🏃</span>运动与拉伸处方</h2>
+          <p class="panel-text" id="actionAdvice"></p>
+          <p class="panel-text sub" id="microAdvice"></p>
+        </div>
+
+        <!-- 模块三：饮食与营养干预 -->
+        <div class="panel">
+          <h2><span class="panel-ico">🥗</span>饮食与营养干预</h2>
+          <p class="panel-text" id="nutritionAdvice"></p>
+          <p class="panel-text sub" id="hydrationAdvice"></p>
+        </div>
+
+        <!-- 今天最该做的一件事 -->
+        <div class="panel key-panel">
+          <h2><span class="panel-ico">🎯</span>今天最该做的一件事</h2>
+          <p class="key-text" id="keyAdvice"></p>
+        </div>
+
+        <div class="actions">
+          <button type="button" id="copyBtn" class="ghost-btn">📋 复制建议</button>
+          <button type="button" id="shareBtn" class="ghost-btn">生成今日数据卡片</button>
+        </div>
+
+      </div>
+
+      <!-- 底部固定操作栏：AI 私教 / 深呼吸两个平行入口。
+           固定在面板底部，不占首屏，抽屉一打开第一眼看到的仍是建议本身。 -->
+      <div class="sheet-dock">
+        <button type="button" id="aiEntryBtn" class="dock-btn dock-ai">
+          <span class="dock-ico" aria-hidden="true">🤖</span>
+          <span class="dock-txt"><strong>AI 私教</strong><em>结合昨天补两句</em></span>
+        </button>
+        <button type="button" id="breatheBtn" class="dock-btn dock-breathe">
+          <span class="dock-ico" aria-hidden="true">🧘</span>
+          <span class="dock-txt"><strong>深呼吸</strong><em>跟着球放松 60 秒</em></span>
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <!-- ================= AI 私教抽屉：在结果抽屉之上再滑出的一层 ================= -->
+  <div id="aiOverlay" class="sheet-overlay sheet-overlay--ai" aria-hidden="true" hidden>
+    <div class="sheet-backdrop" data-ai-close="1"></div>
+
+    <section id="aiSheet" class="sheet sheet--ai" role="dialog" aria-modal="true" aria-labelledby="aiSheetTitle" tabindex="-1">
+      <div class="sheet-grip" id="aiGrip" aria-hidden="true"><span></span></div>
+
+      <div class="sheet-head">
+        <h2 id="aiSheetTitle">🤖 AI 私教</h2>
+        <button type="button" id="aiClose" class="icon-btn" aria-label="关闭 AI 私教">×</button>
+      </div>
+
+      <div class="sheet-body" id="aiSheetBody">
+
+        <!-- AI 私教：按钮 + 隐藏卡片 + 追问输入框 -->
+        <div class="panel ai-section">
+          <p class="panel-cap">想听人话版解释？让教练结合你昨天的数据补两句。仅供参考，不是诊断。</p>
+          <button type="button" id="aiBtn" class="ai-btn">🤖 听听AI私教怎么说</button>
+          <div id="ai-card" class="ai-card" hidden>
+            <p class="ai-title">🤖 AI 私教补充建议</p>
+            <div class="ai-content" id="aiReply" aria-live="polite"></div>
+            <button type="button" id="aiRetryBtn" class="ai-retry" hidden>↻ 再试一次</button>
+            <form class="ai-ask" id="aiAskForm" autocomplete="off">
+              <input type="text" id="aiQuestion" placeholder="还想追问点什么？例如：晚上能跑步吗" maxlength="120">
+              <button type="submit" id="aiAskBtn">追问</button>
+            </form>
+          </div>
+
+          <!-- 不花钱的情绪彩蛋：本地数组随机，不调用接口 -->
+          <div class="fortune">
+            <button type="button" id="fortuneBtn" class="fortune-btn">🎲 抽一句今日能量签</button>
+            <p class="fortune-text" id="fortuneText" aria-live="polite"></p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </div>
 
   <!-- 历史记录弹窗：毛玻璃遮罩 + 居中磨砂卡片 -->
   <div id="historyModal" class="modal" aria-hidden="true">
@@ -225,6 +266,6 @@
   </div>
 
   <script src="html2canvas.min.js" onerror="this.onerror=null;this.src='https://fastly.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'"></script>
-  <script src="script.js?v=15"></script>
+  <script src="script.js?v=18"></script>
 </body>
 </html>

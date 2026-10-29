@@ -473,7 +473,6 @@
   function init() {
     /* --- 元素引用 --- */
     var generateBtn = document.getElementById('generateBtn');
-    var result = document.getElementById('result');
     var activityEl = document.getElementById('activityAdvice');
     var hydrationEl = document.getElementById('hydrationAdvice');
     var microEl = document.getElementById('microAdvice');
@@ -511,6 +510,23 @@
     var breatheClose = document.getElementById('breatheClose');
     var fortuneBtn = document.getElementById('fortuneBtn');
     var fortuneText = document.getElementById('fortuneText');
+
+    /* 结果抽屉 */
+    var resultOverlay = document.getElementById('resultOverlay');
+    var resultSheet = document.getElementById('result');
+    var sheetBody = document.getElementById('sheetBody');
+    var resultClose = document.getElementById('resultClose');
+    var sheetGrip = document.getElementById('sheetGrip');
+    var sheetTimer = null;
+
+    /* 底部两个平行入口 + AI 私教二级抽屉 */
+    var aiEntryBtn = document.getElementById('aiEntryBtn');
+    var aiOverlay = document.getElementById('aiOverlay');
+    var aiSheet = document.getElementById('aiSheet');
+    var aiClose = document.getElementById('aiClose');
+    var aiGrip = document.getElementById('aiGrip');
+    var aiTimer = null;
+    var aiHasReply = false;   /* 已经拿到过回复就不再自动重发请求 */
 
     var currentMode = 'day';
     var lastOut = null;
@@ -579,6 +595,104 @@
         else if (level === 'green') navigator.vibrate([100, 50, 100]);
       } catch (e) { /* 部分浏览器在无用户手势时抛错，忽略 */ }
     }
+
+    /* --- 结果抽屉：从底部滑出 / 收起 --- */
+    function openResultSheet() {
+      if (sheetTimer) { clearTimeout(sheetTimer); sheetTimer = null; }
+
+      resultOverlay.hidden = false;
+      resultOverlay.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('sheet-open');
+      if (sheetBody) sheetBody.scrollTop = 0;
+
+      /* 下一帧再加 is-open，保证 translateY(100%) → 0 的过渡真的跑起来 */
+      requestAnimationFrame(function () {
+        resultOverlay.classList.add('is-open');
+        /* 滑出过程中把焦点交给面板，键盘/读屏用户不会继续留在背景表单上 */
+        resultSheet.focus({ preventScroll: true });
+      });
+    }
+
+    function closeResultSheet() {
+      if (resultOverlay.hidden || sheetTimer) return;
+
+      /* 上层还开着的话先收掉，否则遮罩会残留在半空 */
+      closeAiSheet();
+
+      resultOverlay.classList.remove('is-open');
+      resultOverlay.setAttribute('aria-hidden', 'true');
+
+      /* 等滑出动画走完再 display:none 并解锁背景，否则会出现闪断或滚动条闪一下 */
+      sheetTimer = setTimeout(function () {
+        sheetTimer = null;
+        if (resultOverlay.classList.contains('is-open')) return;
+        resultOverlay.hidden = true;
+        document.body.classList.remove('sheet-open');
+      }, 480);
+    }
+
+    /* --- AI 私教抽屉：叠在结果抽屉上滑出的第二层 --- */
+    function openAiSheet() {
+      if (!aiOverlay) return;
+      if (aiTimer) { clearTimeout(aiTimer); aiTimer = null; }
+
+      aiOverlay.hidden = false;
+      aiOverlay.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('sheet-open');
+
+      requestAnimationFrame(function () {
+        aiOverlay.classList.add('is-open');
+        if (aiSheet) aiSheet.focus({ preventScroll: true });
+      });
+    }
+
+    function closeAiSheet() {
+      if (!aiOverlay || aiOverlay.hidden || aiTimer) return;
+
+      aiOverlay.classList.remove('is-open');
+      aiOverlay.setAttribute('aria-hidden', 'true');
+
+      aiTimer = setTimeout(function () {
+        aiTimer = null;
+        if (aiOverlay.classList.contains('is-open')) return;
+        aiOverlay.hidden = true;
+      }, 420);
+    }
+
+    if (aiClose) aiClose.addEventListener('click', closeAiSheet);
+    if (aiGrip) aiGrip.addEventListener('click', closeAiSheet);
+
+    if (aiOverlay) {
+      aiOverlay.addEventListener('click', function (e) {
+        if (e.target.getAttribute && e.target.getAttribute('data-ai-close') === '1') {
+          closeAiSheet();
+        }
+      });
+    }
+
+    /* 底部入口：先滑出 AI 抽屉；还没聊过就顺手发起一次请求，省一次点击 */
+    if (aiEntryBtn) {
+      aiEntryBtn.addEventListener('click', function () {
+        if (!lastOut) {
+          showToast('还没有结果，先点“生成今天的建议”');
+          return;
+        }
+        openAiSheet();
+        if (!aiHasReply && !aiBtn.disabled && aiReply.textContent === '') {
+          aiBtn.click();
+        }
+      });
+    }
+
+    resultClose.addEventListener('click', closeResultSheet);
+    if (sheetGrip) sheetGrip.addEventListener('click', closeResultSheet);
+
+    resultOverlay.addEventListener('click', function (e) {
+      /* 点遮罩关闭；点面板内部不关 */
+      if (e.target.getAttribute && e.target.getAttribute('data-sheet-close') === '1') {
+        closeResultSheet();
+      }
+    });
 
     /* --- 历史记录渲染 --- */
     function historyDataText(rec) {
@@ -791,6 +905,9 @@
     /* ESC 关闭弹窗/分享预览/深呼吸 */
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
+      /* 只关最上面那一层，避免一次 ESC 把抽屉和历史一起关掉 */
+      if (aiOverlay && !aiOverlay.hidden) { closeAiSheet(); return; }
+      closeResultSheet();
       closeHistory();
       if (!breatheOverlay.hidden) stopBreathe();
       var overlay = document.getElementById('shareOverlay');
@@ -871,15 +988,14 @@
           });
           updateLastTestLabel();
 
-          /* 新结果出来，旧 AI 建议作废 */
+          /* 新结果出来，旧 AI 建议作废，下次点入口会重新问一次 */
           aiCard.hidden = true;
           aiReply.textContent = '';
+          aiHasReply = false;
 
-          /* 先显示结果区，再在下一帧渲染环形——否则首次生成时元素还是 display:none，
-             生长动画会被浏览器直接跳过 */
-          result.hidden = false;
-          requestAnimationFrame(function () { renderVitality(vitality); });
-          result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          /* 先滑出抽屉，再让环形生长：两段动画错开一点，看起来更顺 */
+          openResultSheet();
+          setTimeout(function () { renderVitality(vitality); }, 160);
         }
 
         generateBtn.disabled = false;
@@ -964,6 +1080,7 @@
         clearTimers();
         aiReply.textContent = text;
         aiRetryBtn.hidden = true;
+        aiHasReply = true;
       }
 
       return fetch(AI_ENDPOINT, {
@@ -1200,7 +1317,7 @@
         ? '用昨日的账单，定今日的预算：昨晚怎么睡、昨天坐多久，决定今天怎么动。'
         : '用昨日的账单，定今日的预算：夜班后睡够没、走了多少步，决定今天补什么。';
       writeInputs(modeInputs[mode] || {});
-      result.hidden = true;
+      closeResultSheet();
       errEl.hidden = true;
       aiCard.hidden = true; /* 切换模式后旧 AI 建议已不适用 */
     }
