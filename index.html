@@ -106,12 +106,12 @@
         <h2>今天最该做的一件事</h2>
         <p id="keyAdvice"></p>
       </div>
-      <!-- AI 私教模块：点击后把当前数据+基础建议发给 DeepSeek，返回内容展示在下方卡片 -->
+      <!-- AI 私教模块：点击后把四项数据 + 基础活动建议发给 Worker 代理，回复展示在下方卡片 -->
       <div class="ai-section">
         <button type="button" id="aiBtn" class="ai-btn">🤖 听听AI私教怎么说</button>
-        <div class="ai-card" id="aiCard" hidden>
+        <div id="ai-card" class="ai-card" hidden>
           <p class="ai-title">🤖 AI 私教补充建议</p>
-          <div class="ai-content" id="aiContent" aria-live="polite"></div>
+          <div class="ai-content" id="aiReply" aria-live="polite"></div>
         </div>
       </div>
       <button type="button" id="copyBtn" class="copy-btn">📋 复制建议</button>

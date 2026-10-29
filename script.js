@@ -43,9 +43,8 @@
   /* 卡片底部展示的网址（部署后改成你的正式地址） */
   var SITE_URL = 'jiaozuo-ren.github.io';
 
-  /* ================= DeepSeek AI 私教配置（仅本地测试） ================= */
-  var DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
-  var DEEPSEEK_MODEL = 'deepseek-chat';
+  /* ================= AI 私教接口（Cloudflare Worker 代理，API Key 存放在 Worker 端） ================= */
+  var AI_ENDPOINT = 'https://wandering-shadow-d12b.2179369131.workers.dev/';
 
   /* ================= 规则表（20行：状态分级 + 活动建议 + 绝对禁忌 + 动作处方 + 营养提示 + 今天最该做） ================= */
   var RULES = [
@@ -511,102 +510,80 @@
       );
     });
 
-    /* ================= AI 私教：把当前数据 + 基础建议发给 DeepSeek ================= */
+    /* ================= AI 私教：把四项数据 + 基础活动建议发给 Worker 代理 ================= */
     var aiBtn = document.getElementById('aiBtn');
-    var aiCard = document.getElementById('aiCard');
-    var aiContent = document.getElementById('aiContent');
+    var aiCard = document.getElementById('ai-card');
+    var aiReply = document.getElementById('aiReply');
 
+    var AI_BTN_TEXT = '🤖 听听AI私教怎么说';
+    var AI_BTN_LOADING_TEXT = '教练正在思考中…';
+    var AI_ERROR_TEXT = '教练正在忙，请稍后再试';
+
+    /* 按钮状态切换：加载中禁用并换文案，请求结束后恢复 */
     function setAiLoading(loading) {
       aiBtn.disabled = loading;
-      aiBtn.textContent = loading ? '🤖 AI 私教思考中…' : '🤖 听听AI私教怎么说';
+      aiBtn.textContent = loading ? AI_BTN_LOADING_TEXT : AI_BTN_TEXT;
     }
 
-    aiBtn.addEventListener('click', function () {
-      if (!lastOut) {
-        showToast('还没有结果，先点“生成今天的建议”');
-        return;
-      }
-      if (aiBtn.disabled) return;
-      if (typeof DEEPSEEK_API_KEY === 'undefined' || !DEEPSEEK_API_KEY) {
-        showToast('未配置 API Key，无法使用 AI 私教');
-        return;
-      }
-
-      /* 1. 提取当前页面上的四项数据与基础建议 */
+    /* 把页面上的四项数据拼成一句话，例如：久坐8小时，睡眠6小时，心率75，步数2500 */
+    function buildUserData() {
+      var parts = [];
       var sedentaryVal = document.getElementById('sedentary').value.trim();
       var sleepVal = document.getElementById('sleep').value.trim();
       var hrVal = document.getElementById('hr').value.trim();
       var stepsVal = document.getElementById('steps').value.trim();
 
-      var dataLines = [
-        '当前模式：' + (currentMode === 'day' ? '久坐上班族' : '夜班/倒时差'),
-        '久坐时长：' + (currentMode === 'night' ? '未填写（夜班模式不统计）' : sedentaryVal + ' 小时'),
-        '睡眠时长：' + sleepVal + ' 小时',
-        '静息心率：' + (hrVal === '' ? '未填写' : hrVal + ' 次/分钟'),
-        '每日步数：' + stepsVal + ' 步',
-        '今日活力值：' + lastVitality + ' / 100'
-      ];
-      var adviceLines = [
-        '状态分级：' + riskBadge.textContent,
-        '活动建议：' + activityEl.textContent,
-        '今日饮水目标：' + hydrationEl.textContent,
-        '微动作建议：' + microEl.textContent,
-        '绝对禁忌：' + tabooEl.textContent,
-        '动作处方：' + actionEl.textContent,
-        '营养提示：' + nutritionEl.textContent,
-        '今天最该做的一件事：' + keyEl.textContent
-      ];
+      if (sedentaryVal !== '') {
+        parts.push('久坐' + sedentaryVal + '小时');
+      } else if (currentMode === 'night') {
+        parts.push('夜班/倒时差模式');
+      }
+      if (sleepVal !== '') parts.push('睡眠' + sleepVal + '小时');
+      if (hrVal !== '') parts.push('心率' + hrVal); /* 心率允许留空，留空就不拼进句子 */
+      if (stepsVal !== '') parts.push('步数' + stepsVal);
 
-      var userPrompt =
-        '我是一名久坐上班族的健康数据翻译工具用户。以下是我今天的身体数据：\n' +
-        dataLines.join('\n') +
-        '\n\n工具按固定规则给我的基础建议如下：\n' +
-        adviceLines.join('\n') +
-        '\n\n请你扮演一位专业的私人健康教练，基于以上数据和基础建议，给出一段补充点评：\n' +
-        '1. 用通俗的中文口语，像教练当面聊天一样；\n' +
-        '2. 先简单点评我的整体状态（2—3 句），再给出 2—3 条具体可执行的补充建议（基础建议里已经说过的内容不要重复）；\n' +
-        '3. 如果数据显示有明显风险，请提醒我关注，必要时建议就医；\n' +
-        '4. 全文控制在 200 字以内，不要用 Markdown 格式符号，直接输出纯文本。';
+      return parts.join('，');
+    }
 
-      /* 2. 展示加载状态并发起请求 */
-      aiCard.hidden = false;
-      aiContent.textContent = '正在连接 AI 私教，请稍候…';
+    aiBtn.addEventListener('click', function () {
+      /* 没生成过建议，就没有基础建议可发送 */
+      if (!lastOut) {
+        showToast('还没有结果，先点“生成今天的建议”');
+        return;
+      }
+      if (aiBtn.disabled) return;
+
+      /* 1. 组装请求参数：四项数据一句话 + 已有活动建议原文 */
+      var userData = buildUserData();
+      var baseAdvice = activityEl.textContent;
+
+      /* 2. 进入加载态：按钮禁用改文案，卡片先显示等待提示 */
       setAiLoading(true);
+      aiCard.hidden = false;
+      aiReply.textContent = '教练正在阅读你的数据…';
 
-      fetch(DEEPSEEK_API_URL, {
+      /* 3. 请求 Worker 代理（API Key 在 Worker 端，前端不暴露） */
+      fetch(AI_ENDPOINT, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + DEEPSEEK_API_KEY
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: DEEPSEEK_MODEL,
-          messages: [
-            { role: 'system', content: '你是一位专业、耐心、说话接地气的私人健康教练，专注久坐人群和夜班人群的健康管理。' },
-            { role: 'user', content: userPrompt }
-          ],
-          temperature: 0.7,
-          max_tokens: 500
+          userData: userData,
+          baseAdvice: baseAdvice
         })
       }).then(function (res) {
-        if (!res.ok) {
-          /* 按 DeepSeek 常见状态码给出友好提示 */
-          if (res.status === 401) throw new Error('API Key 无效或已过期，请检查 script.js 里的 DEEPSEEK_API_KEY。');
-          if (res.status === 402) throw new Error('账户余额不足，请到 DeepSeek 平台充值后重试。');
-          if (res.status === 429) throw new Error('请求太频繁了，请稍等几秒再试一次。');
-          throw new Error('服务返回了错误（状态码 ' + res.status + '），请稍后重试。');
-        }
+        if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
       }).then(function (data) {
-        var reply = data && data.choices && data.choices[0] &&
-          data.choices[0].message && data.choices[0].message.content;
-        if (!reply) throw new Error('AI 没有返回内容，请重试。');
-        aiContent.textContent = reply.trim();
-        setAiLoading(false);
-      }).catch(function (err) {
-        /* 网络异常（fetch 本身 reject）与其余错误统一兜底 */
-        var msg = (err && err.message) ? err.message : '网络请求失败，请检查网络连接后重试。';
-        aiContent.textContent = '⚠️ 不好意思，AI 私教暂时联系不上：' + msg;
+        var reply = data && data.reply ? String(data.reply).trim() : '';
+        if (!reply) throw new Error('empty reply');
+        aiReply.textContent = reply;
+      }).catch(function () {
+        /* 网络异常、非 2xx、返回体缺 reply 字段，统一给友好提示 */
+        aiReply.textContent = AI_ERROR_TEXT;
+      }).then(function () {
+        /* 无论成功失败都恢复按钮，避免卡在禁用状态 */
         setAiLoading(false);
       });
     });
