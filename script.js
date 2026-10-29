@@ -1,4 +1,5 @@
-/* 今日活动建议 - 纯固定分支判断（无AI、无后端、无数据库） */
+/* 今日活动建议 - 纯固定分支判断（无后端、无数据库）
+   本版新增：时间自动昼夜主题 / 环形活力值 / localStorage 历史记录 / AI 私教与追问 */
 (function () {
   'use strict';
 
@@ -322,7 +323,51 @@
     };
   }
 
-  /* ================= 最近一次测试（localStorage） ================= */
+  /* ================= 历史记录（localStorage，最多保留 7 条） ================= */
+  var HISTORY_KEY = 'shiftHealthHistory';
+  var HISTORY_MAX = 7;
+
+  function loadHistory() {
+    try {
+      var raw = localStorage.getItem(HISTORY_KEY);
+      if (!raw) return [];
+      var arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveHistory(rec) {
+    try {
+      var arr = loadHistory();
+      arr.unshift(rec);
+      if (arr.length > HISTORY_MAX) arr = arr.slice(0, HISTORY_MAX);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(arr));
+      return arr;
+    } catch (e) {
+      return loadHistory();
+    }
+  }
+
+  function clearHistory() {
+    try {
+      localStorage.removeItem(HISTORY_KEY);
+    } catch (e) {
+      /* 忽略隐私模式下的写入异常 */
+    }
+  }
+
+  /* 时间戳 → “10月29日 12:51” */
+  function formatStamp(ts) {
+    var d = new Date(ts);
+    var hh = d.getHours();
+    var mm = d.getMinutes();
+    return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' +
+      (hh < 10 ? '0' + hh : hh) + ':' + (mm < 10 ? '0' + mm : mm);
+  }
+
+  /* ================= 最近一次测试（保留旧接口，供自动验收使用） ================= */
   function formatMonthDay(dateStr) {
     var parts = String(dateStr).split('-');
     if (parts.length === 3) {
@@ -334,44 +379,6 @@
   function getLastTestText(rec) {
     if (!rec || !rec.date || typeof rec.vitality !== 'number') return null;
     return '你上次测试是在：' + formatMonthDay(rec.date) + '，当时活力值：' + rec.vitality + '分';
-  }
-
-  function saveLastTest(sedentary, sleep, hr, steps, vitality, mode) {
-    try {
-      var now = new Date();
-      var record = {
-        date: now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate(),
-        mode: mode || 'day',
-        sedentary: sedentary,
-        sleep: sleep,
-        hr: hr,
-        steps: steps,
-        vitality: vitality
-      };
-      localStorage.setItem('shiftHealthLastTest', JSON.stringify(record));
-    } catch (e) {
-      /* localStorage 不可用时静默跳过，不影响主流程 */
-    }
-  }
-
-  function updateLastTestDisplay() {
-    var el = document.getElementById('lastTest');
-    if (!el) return;
-    var text = null;
-    try {
-      var raw = localStorage.getItem('shiftHealthLastTest');
-      if (raw) {
-        text = getLastTestText(JSON.parse(raw));
-      }
-    } catch (e) {
-      text = null;
-    }
-    if (!text) {
-      el.hidden = true;
-      return;
-    }
-    el.textContent = text;
-    el.hidden = false;
   }
 
   /* ================= 页面逻辑 ================= */
@@ -398,8 +405,22 @@
     return null;
   }
 
+  /* ================= 昼夜主题：6:00—18:00 白天，其余时间夜间 ================= */
+  function themeForHour(h) {
+    return (h >= 6 && h < 18) ? 'day' : 'night';
+  }
+
+  function applyThemeByClock() {
+    var next = themeForHour(new Date().getHours());
+    if (document.documentElement.getAttribute('data-theme') !== next) {
+      document.documentElement.setAttribute('data-theme', next);
+    }
+    return next;
+  }
+
   function init() {
-    var btn = document.getElementById('generateBtn');
+    /* --- 元素引用 --- */
+    var generateBtn = document.getElementById('generateBtn');
     var result = document.getElementById('result');
     var activityEl = document.getElementById('activityAdvice');
     var hydrationEl = document.getElementById('hydrationAdvice');
@@ -410,19 +431,172 @@
     var riskBadge = document.getElementById('riskBadge');
     var keyEl = document.getElementById('keyAdvice');
     var errEl = document.getElementById('formError');
-    var vitalityTrack = document.getElementById('vitalityTrack');
-    var vitalityFill = document.getElementById('vitalityFill');
     var vitalityScore = document.getElementById('vitalityScore');
+    var ringBar = document.getElementById('ringBar');
+    var ringTip = document.getElementById('ringTip');
     var modeSwitchBtn = document.getElementById('modeSwitchBtn');
     var modeStatus = document.getElementById('modeStatus');
     var fieldSedentary = document.getElementById('fieldSedentary');
     var appDesc = document.getElementById('appDesc');
     var appSub = document.getElementById('appSub');
+    var aiBtn = document.getElementById('aiBtn');
+    var aiCard = document.getElementById('ai-card');
+    var aiReply = document.getElementById('aiReply');
+    var aiAskForm = document.getElementById('aiAskForm');
+    var aiQuestion = document.getElementById('aiQuestion');
+    var aiAskBtn = document.getElementById('aiAskBtn');
+    var historyModal = document.getElementById('historyModal');
+    var historyList = document.getElementById('historyList');
+    var lastTestEl = document.getElementById('lastTest');
+
     var currentMode = 'day';
     var lastOut = null;
     var lastVitality = 0;
 
-    document.getElementById('generateBtn').addEventListener('click', function () {
+    var RING_C = 2 * Math.PI * 92; /* 与 SVG 中 r=92 对应 */
+    var AI_BTN_TEXT = '🤖 听听AI私教怎么说';
+    var AI_BTN_LOADING = '教练正在思考中…';
+    var AI_ERROR_TEXT = '教练正在忙，请稍后再试';
+
+    /* --- 环形活力值 --- */
+    function animateScore(target) {
+      var start = 0;
+      var t0 = 0;
+      var dur = 900;
+      function step(now) {
+        if (!t0) t0 = now;
+        var p = Math.min(1, (now - t0) / dur);
+        var eased = 1 - Math.pow(1 - p, 3);
+        vitalityScore.textContent = Math.round(start + (target - start) * eased);
+        if (p < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    function renderVitality(score) {
+      var pct = Math.max(0, Math.min(100, score));
+      /* 先归零再设置目标值，保证每次生成都有“生长”动画 */
+      ringBar.style.transition = 'none';
+      ringBar.style.strokeDashoffset = String(RING_C);
+      void ringBar.getBoundingClientRect();
+      ringBar.style.transition = '';
+
+      ringBar.classList.remove('ring-red', 'ring-yellow', 'ring-green');
+      if (pct < 60) ringBar.classList.add('ring-red');
+      else if (pct <= 80) ringBar.classList.add('ring-yellow');
+      else ringBar.classList.add('ring-green');
+
+      ringBar.style.strokeDashoffset = String(RING_C * (1 - pct / 100));
+      animateScore(pct);
+
+      if (pct < 60) ringTip.textContent = '恢复不足：今天优先休息，别加练';
+      else if (pct <= 80) ringTip.textContent = '还有提升空间：补觉、补步数都算加分';
+      else ringTip.textContent = '状态不错：保持今天的节奏就好';
+    }
+
+    /* --- 历史记录渲染 --- */
+    function historyDataText(rec) {
+      var parts = [];
+      if (rec.sedentary !== null && rec.sedentary !== undefined && rec.sedentary !== '') {
+        parts.push('久坐 ' + rec.sedentary + 'h');
+      } else if (rec.mode === 'night') {
+        parts.push('夜班模式');
+      }
+      if (rec.sleep !== null && rec.sleep !== undefined) parts.push('睡眠 ' + rec.sleep + 'h');
+      if (rec.hr !== null && rec.hr !== undefined && rec.hr !== '') parts.push('心率 ' + rec.hr);
+      if (rec.steps !== null && rec.steps !== undefined) parts.push('步数 ' + rec.steps);
+      return parts.join(' · ');
+    }
+
+    function renderHistory() {
+      var arr = loadHistory();
+      historyList.innerHTML = '';
+
+      if (!arr.length) {
+        var empty = document.createElement('p');
+        empty.className = 'history-empty';
+        empty.textContent = '还没有记录，先生成一次今日建议吧。';
+        historyList.appendChild(empty);
+        return;
+      }
+
+      arr.forEach(function (rec) {
+        var card = document.createElement('div');
+        card.className = 'h-card';
+
+        var main = document.createElement('div');
+        main.className = 'h-main';
+
+        var date = document.createElement('p');
+        date.className = 'h-date';
+        date.textContent = formatStamp(rec.ts) + (rec.mode === 'night' ? ' · 夜班' : '');
+
+        var data = document.createElement('p');
+        data.className = 'h-data';
+        data.textContent = historyDataText(rec);
+
+        main.appendChild(date);
+        main.appendChild(data);
+
+        /* 小环形活力分 */
+        var ring = document.createElement('div');
+        ring.className = 'h-ring ' + (rec.vitality < 60 ? 'red' : (rec.vitality <= 80 ? 'yellow' : 'green'));
+        ring.style.setProperty('--p', rec.vitality);
+        var ringText = document.createElement('span');
+        ringText.textContent = rec.vitality;
+        ring.appendChild(ringText);
+
+        var restore = document.createElement('button');
+        restore.type = 'button';
+        restore.className = 'h-restore';
+        restore.textContent = '↩️ 回填';
+        restore.addEventListener('click', function () {
+          restoreRecord(rec);
+        });
+
+        card.appendChild(main);
+        card.appendChild(ring);
+        card.appendChild(restore);
+        historyList.appendChild(card);
+      });
+    }
+
+    function restoreRecord(rec) {
+      if (rec.mode && rec.mode !== currentMode) setMode(rec.mode);
+      document.getElementById('sedentary').value = (rec.sedentary === null || rec.sedentary === undefined) ? '' : rec.sedentary;
+      document.getElementById('sleep').value = (rec.sleep === null || rec.sleep === undefined) ? '' : rec.sleep;
+      document.getElementById('hr').value = (rec.hr === null || rec.hr === undefined) ? '' : rec.hr;
+      document.getElementById('steps').value = (rec.steps === null || rec.steps === undefined) ? '' : rec.steps;
+      closeHistory();
+      runGenerate();
+      showToast('已回填历史数据');
+    }
+
+    function openHistory() {
+      renderHistory();
+      historyModal.classList.add('show');
+      historyModal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeHistory() {
+      historyModal.classList.remove('show');
+      historyModal.setAttribute('aria-hidden', 'true');
+    }
+
+    document.getElementById('historyBtn').addEventListener('click', openHistory);
+    document.getElementById('historyClose').addEventListener('click', closeHistory);
+    historyModal.addEventListener('click', function (e) {
+      if (e.target.getAttribute('data-close') === '1') closeHistory();
+    });
+    document.getElementById('historyClear').addEventListener('click', function () {
+      clearHistory();
+      renderHistory();
+      if (lastTestEl) lastTestEl.hidden = true;
+      showToast('历史记录已清空');
+    });
+
+    /* --- 生成建议 --- */
+    function runGenerate() {
       errEl.hidden = true;
 
       var sedentaryRaw = document.getElementById('sedentary').value.trim();
@@ -443,89 +617,116 @@
         return;
       }
 
-      /* 0.5 秒“分析中…”状态：防止连点，也让结果显得严谨 */
-      btn.disabled = true;
-      btn.classList.add('is-loading');
-      btn.textContent = '分析中…';
+      generateBtn.disabled = true;
+      generateBtn.textContent = '分析中…';
 
       setTimeout(function () {
         var out = currentMode === 'night'
           ? getNightAdvice(sleep, hr, steps)
           : getAdvice(sedentary, sleep, hr, steps);
+
         if (!out) {
           showError(errEl, '没有匹配到规则，请检查输入。');
         } else {
+          var vitality = computeVitality(sedentary, sleep, hr, steps);
+          var micro = computeMicroAction(sedentary, sleep, currentMode);
+          var hydration = computeHydration(steps, sedentary, currentMode);
+
+          /* 模块一：状态诊断 */
           riskBadge.textContent = out.risk;
           riskBadge.className = 'risk-badge risk-' + out.riskLevel;
           activityEl.textContent = out.advice;
-          hydrationEl.textContent = computeHydration(steps, sedentary, currentMode);
-          microEl.textContent = computeMicroAction(sedentary, sleep, currentMode);
-          tabooEl.textContent = out.taboo;
+          tabooEl.textContent = '⚠️ 绝对禁忌：' + out.taboo;
+
+          /* 模块二：运动与拉伸处方 */
           actionEl.textContent = out.action;
+          microEl.textContent = '微动作：' + micro;
+
+          /* 模块三：饮食与营养干预 */
           nutritionEl.textContent = out.nutrition;
+          hydrationEl.textContent = hydration;
+
           keyEl.textContent = out.key;
-          var vitality = computeVitality(sedentary, sleep, hr, steps);
+
           lastOut = out;
           lastVitality = vitality;
-          vitalityFill.style.width = vitality + '%';
-          vitalityScore.textContent = vitality + ' / 100';
-          vitalityTrack.setAttribute('aria-valuenow', vitality);
-          saveLastTest(sedentary, sleep, hr, steps, vitality, currentMode);
-          updateLastTestDisplay();
-          aiCard.hidden = true; /* 重新生成后清掉上一次的 AI 建议 */
+          renderVitality(vitality);
+
+          /* 存历史（最多 7 条） */
+          saveHistory({
+            ts: Date.now(),
+            mode: currentMode,
+            sedentary: sedentary,
+            sleep: sleep,
+            hr: hr,
+            steps: steps,
+            vitality: vitality
+          });
+
+          /* 新结果出来，旧 AI 建议作废 */
+          aiCard.hidden = true;
+          aiReply.textContent = '';
+
           result.hidden = false;
           result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
-        btn.disabled = false;
-        btn.classList.remove('is-loading');
-        btn.textContent = '生成今天的建议';
-      }, 500);
-    });
+        generateBtn.disabled = false;
+        generateBtn.textContent = '生成今天的建议';
+      }, 450);
+    }
 
-    /* 一键填入示例数据：填入示例并立即触发生成，降低使用门槛 */
+    generateBtn.addEventListener('click', runGenerate);
+
+    /* 一键填入示例：填入后立即生成 */
     document.getElementById('demoBtn').addEventListener('click', function () {
       document.getElementById('sedentary').value = '8';
       document.getElementById('sleep').value = '6';
       document.getElementById('hr').value = '75';
       document.getElementById('steps').value = '2500';
-      btn.click();
+      runGenerate();
     });
 
-    /* 一键复制：把两段建议复制到剪贴板 */
-    document.getElementById('copyBtn').addEventListener('click', function () {
-      var advice = activityEl.textContent;
-      var key = keyEl.textContent;
-      if (!advice && !key) {
-        showToast('还没有结果，先点“生成今天的建议”');
-        return;
+    /* 回车即生成 */
+    document.querySelector('.form-card').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+        e.preventDefault();
+        runGenerate();
       }
-      var text = '【今日状态】' + riskBadge.textContent + '\n【活动建议】' + advice +
-        '\n【今日饮水目标】' + hydrationEl.textContent + '\n【微动作建议】' + microEl.textContent +
-        '\n【绝对禁忌】' + tabooEl.textContent + '\n【动作处方】' + actionEl.textContent +
-        '\n【营养提示】' + nutritionEl.textContent + '\n【今天最该做的一件事】' + key;
-      copyText(text).then(
-        function () { showToast('已复制'); },
-        function () { showToast('复制失败，请手动选中文字复制'); }
-      );
     });
 
-    /* ================= AI 私教：把四项数据 + 基础活动建议发给 Worker 代理 ================= */
-    var aiBtn = document.getElementById('aiBtn');
-    var aiCard = document.getElementById('ai-card');
-    var aiReply = document.getElementById('aiReply');
-
-    var AI_BTN_TEXT = '🤖 听听AI私教怎么说';
-    var AI_BTN_LOADING_TEXT = '教练正在思考中…';
-    var AI_ERROR_TEXT = '教练正在忙，请稍后再试';
-
-    /* 按钮状态切换：加载中禁用并换文案，请求结束后恢复 */
-    function setAiLoading(loading) {
-      aiBtn.disabled = loading;
-      aiBtn.textContent = loading ? AI_BTN_LOADING_TEXT : AI_BTN_TEXT;
+    /* --- AI 私教 --- */
+    function setAiBusy(busy) {
+      aiBtn.disabled = busy;
+      aiAskBtn.disabled = busy;
+      aiBtn.textContent = busy ? AI_BTN_LOADING : AI_BTN_TEXT;
     }
 
-    /* 把页面上的四项数据拼成一句话，例如：久坐8小时，睡眠6小时，心率75，步数2500 */
+    function askCoach(payload, waitingText) {
+      setAiBusy(true);
+      aiCard.hidden = false;
+      aiReply.textContent = waitingText || '教练正在阅读你的数据…';
+
+      return fetch(AI_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      }).then(function (data) {
+        var reply = data && data.reply ? String(data.reply).trim() : '';
+        if (!reply) throw new Error('empty reply');
+        aiReply.textContent = reply;
+      }).catch(function () {
+        /* 网络异常、非 2xx、缺 reply 字段，统一友好提示 */
+        aiReply.textContent = AI_ERROR_TEXT;
+      }).then(function () {
+        setAiBusy(false);
+      });
+    }
+
+    /* 四项数据拼成一句话，例如：久坐8小时，睡眠6小时，心率75，步数2500 */
     function buildUserData() {
       var parts = [];
       var sedentaryVal = document.getElementById('sedentary').value.trim();
@@ -539,59 +740,73 @@
         parts.push('夜班/倒时差模式');
       }
       if (sleepVal !== '') parts.push('睡眠' + sleepVal + '小时');
-      if (hrVal !== '') parts.push('心率' + hrVal); /* 心率允许留空，留空就不拼进句子 */
+      if (hrVal !== '') parts.push('心率' + hrVal);
       if (stepsVal !== '') parts.push('步数' + stepsVal);
 
       return parts.join('，');
     }
 
     aiBtn.addEventListener('click', function () {
-      /* 没生成过建议，就没有基础建议可发送 */
       if (!lastOut) {
         showToast('还没有结果，先点“生成今天的建议”');
         return;
       }
       if (aiBtn.disabled) return;
-
-      /* 1. 组装请求参数：四项数据一句话 + 已有活动建议原文 */
-      var userData = buildUserData();
-      var baseAdvice = activityEl.textContent;
-
-      /* 2. 进入加载态：按钮禁用改文案，卡片先显示等待提示 */
-      setAiLoading(true);
-      aiCard.hidden = false;
-      aiReply.textContent = '教练正在阅读你的数据…';
-
-      /* 3. 请求 Worker 代理（API Key 在 Worker 端，前端不暴露） */
-      fetch(AI_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          userData: userData,
-          baseAdvice: baseAdvice
-        })
-      }).then(function (res) {
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        return res.json();
-      }).then(function (data) {
-        var reply = data && data.reply ? String(data.reply).trim() : '';
-        if (!reply) throw new Error('empty reply');
-        aiReply.textContent = reply;
-      }).catch(function () {
-        /* 网络异常、非 2xx、返回体缺 reply 字段，统一给友好提示 */
-        aiReply.textContent = AI_ERROR_TEXT;
-      }).then(function () {
-        /* 无论成功失败都恢复按钮，避免卡在禁用状态 */
-        setAiLoading(false);
+      askCoach({
+        userData: buildUserData(),
+        baseAdvice: activityEl.textContent
       });
     });
 
-    /* 生成今日数据卡片：弹出预览 → 截图下载 PNG → 手动关闭 */
+    /* 追问：沿用同一接口，把问题附在基础建议后面 */
+    aiAskForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (!lastOut) {
+        showToast('还没有结果，先点“生成今天的建议”');
+        return;
+      }
+      var q = aiQuestion.value.trim();
+      if (!q) {
+        showToast('先写一句想问的话');
+        return;
+      }
+      if (aiBtn.disabled) return;
+
+      askCoach({
+        userData: buildUserData(),
+        baseAdvice: activityEl.textContent + '\n【我的追问】' + q
+      }, '教练正在回答你的追问…').then(function () {
+        aiQuestion.value = '';
+      });
+    });
+
+    /* --- 复制建议 --- */
+    document.getElementById('copyBtn').addEventListener('click', function () {
+      if (!lastOut) {
+        showToast('还没有结果，先点“生成今天的建议”');
+        return;
+      }
+      var text = '【状态诊断】' + riskBadge.textContent +
+        '\n【活动建议】' + activityEl.textContent +
+        '\n【绝对禁忌】' + tabooEl.textContent +
+        '\n【运动与拉伸处方】' + actionEl.textContent +
+        '\n【微动作】' + microEl.textContent +
+        '\n【饮食与营养干预】' + nutritionEl.textContent +
+        '\n【饮水目标】' + hydrationEl.textContent +
+        '\n【今天最该做的一件事】' + keyEl.textContent +
+        '\n【今日活力值】' + lastVitality + ' / 100';
+      copyText(text).then(
+        function () { showToast('已复制'); },
+        function () { showToast('复制失败，请手动选中文字复制'); }
+      );
+    });
+
+    /* --- 生成数据卡片（html2canvas 截图下载） --- */
     var shareOverlay = document.getElementById('shareOverlay');
     var shareCard = document.getElementById('shareCard');
-    document.getElementById('shareBtn').addEventListener('click', function () {
+    var shareBtn = document.getElementById('shareBtn');
+
+    shareBtn.addEventListener('click', function () {
       if (!lastOut) {
         showToast('还没有结果，先点“生成今天的建议”');
         return;
@@ -601,7 +816,7 @@
         return;
       }
       if (shareOverlay.classList.contains('show')) return;
-      var shareBtn = document.getElementById('shareBtn');
+
       shareBtn.disabled = true;
       shareBtn.textContent = '生成中…';
       document.getElementById('shareMode').textContent = currentMode === 'day' ? '久坐上班族' : '夜班/倒时差';
@@ -613,7 +828,7 @@
       document.getElementById('shareDate').textContent = now.getFullYear() + '年' + (now.getMonth() + 1) + '月' + now.getDate() + '日';
       document.getElementById('shareUrl').textContent = SITE_URL;
 
-      /* 先让卡片显示在屏幕上再截图：离屏元素 html2canvas 会截失败 */
+      /* 先显示再截图，离屏元素 html2canvas 会截失败 */
       shareOverlay.classList.add('show');
       html2canvas(shareCard, { scale: 2, backgroundColor: '#16352a' }).then(function (canvas) {
         var rounded = roundRectCanvas(canvas, 48);
@@ -633,7 +848,6 @@
       });
     });
 
-    /* 预览卡片：点 × 或点空白处关闭 */
     document.getElementById('shareClose').addEventListener('click', function () {
       shareOverlay.classList.remove('show');
     });
@@ -641,13 +855,7 @@
       if (e.target === shareOverlay) shareOverlay.classList.remove('show');
     });
 
-    document.querySelector('.form-card').addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
-        btn.click();
-      }
-    });
-
-    /* 人群模式切换：输入框与判断逻辑联动，两个模式各自独立记忆输入 */
+    /* --- 人群模式切换：两个模式各自记忆输入 --- */
     var modeInputs = { day: {}, night: {} };
 
     function readInputs() {
@@ -681,25 +889,34 @@
       writeInputs(modeInputs[mode] || {});
       result.hidden = true;
       errEl.hidden = true;
-      aiCard.hidden = true; /* 切换模式后旧 AI 建议已不适用，一并隐藏 */
+      aiCard.hidden = true; /* 切换模式后旧 AI 建议已不适用 */
     }
 
-    document.getElementById('modeSwitchBtn').addEventListener('click', function () {
+    modeSwitchBtn.addEventListener('click', function () {
       setMode(currentMode === 'day' ? 'night' : 'day');
     });
 
-    /* 暗黑模式：右上角按钮切换，localStorage 记住选择 */
-    var savedTheme = null;
-    try { savedTheme = localStorage.getItem('shiftHealthTheme'); } catch (e) {}
-    document.documentElement.setAttribute('data-theme', savedTheme === 'dark' ? 'dark' : 'light');
-    document.getElementById('themeToggle').addEventListener('click', function () {
-      var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', next);
-      try { localStorage.setItem('shiftHealthTheme', next); } catch (e) {}
-    });
+    /* --- 时间驱动的昼夜主题 --- */
+    applyThemeByClock();
+    setInterval(applyThemeByClock, 10 * 60 * 1000);
 
-    /* 页面加载时显示最近一次测试记录 */
-    updateLastTestDisplay();
+    /* 清理旧版手动主题留下的缓存键（本版已改为按时间自动切换） */
+    try { localStorage.removeItem('shiftHealthTheme'); } catch (e) {}
+
+    /* --- 页面加载：展示最近一条历史记录的摘要 --- */
+    (function showLastTest() {
+      var arr = loadHistory();
+      if (!arr.length || !lastTestEl) return;
+      var rec = arr[0];
+      var d = new Date(rec.ts);
+      var text = getLastTestText({
+        date: d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(),
+        vitality: rec.vitality
+      });
+      if (!text) return;
+      lastTestEl.textContent = text;
+      lastTestEl.hidden = false;
+    })();
   }
 
   function showError(errEl, msg) {
@@ -764,7 +981,7 @@
     clearTimeout(toast._timer);
     toast._timer = setTimeout(function () {
       toast.classList.remove('show');
-    }, 1600);
+    }, 1800);
   }
 
   if (typeof document !== 'undefined') {
@@ -785,6 +1002,11 @@
       computeMicroAction: computeMicroAction,
       formatMonthDay: formatMonthDay,
       getLastTestText: getLastTestText,
+      formatStamp: formatStamp,
+      themeForHour: themeForHour,
+      loadHistory: loadHistory,
+      saveHistory: saveHistory,
+      clearHistory: clearHistory,
       RULES: RULES,
       FALLBACK: FALLBACK,
       FALLBACK_KEY: FALLBACK_KEY,
