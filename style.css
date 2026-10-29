@@ -592,6 +592,24 @@ button:focus-visible,
   word-break: break-word;
 }
 
+/* 失败后的原地重试：手机上不用再滚回顶部点大按钮 */
+.ai-retry {
+  margin-top: 12px;
+  padding: 9px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ai);
+  background: transparent;
+  border: 1px solid var(--ai);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.ai-retry:hover { background: var(--glass-border); }
+
+.ai-retry:disabled { opacity: 0.5; cursor: wait; }
+
 .ai-ask {
   display: flex;
   gap: 8px;
@@ -1076,6 +1094,27 @@ button:focus-visible,
   .ring-score { font-size: 52px; }
   .panel { padding: 18px; }
   .actions { flex-direction: column; }
+
+  /* 手机上大面积高斯模糊非常吃 GPU：缩小模糊半径、去掉一层光斑，
+     否则滚动和点击会明显发涩 */
+  .blob { filter: blur(48px); opacity: 0.6; }
+  .blob-3 { display: none; }
+
+  .glass,
+  .about-card {
+    -webkit-backdrop-filter: blur(8px) saturate(140%);
+    backdrop-filter: blur(8px) saturate(140%);
+  }
+
+  .float-history {
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+
+  .modal-backdrop {
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
 }
 
 /* 尊重「减少动态效果」的系统设置 */

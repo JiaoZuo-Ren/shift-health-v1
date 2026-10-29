@@ -47,6 +47,10 @@
   /* ================= AI 私教接口（Cloudflare Worker 代理，API Key 存放在 Worker 端） ================= */
   var AI_ENDPOINT = 'https://wandering-shadow-d12b.2179369131.workers.dev/';
 
+  /* 接口在手机网络上可能很慢：给一个明确的等待上限，超时就提示重试，避免无限转圈 */
+  var AI_TIMEOUT_MS = 45000;      /* 首字上限：45 秒内还没开始返回就中断（已开始流式输出后不再计时） */
+  var AI_SLOW_TIP_SEC = 10;       /* 超过 10 秒换成“网络有点慢”的提示 */
+
   /* ================= 规则表（20行：状态分级 + 活动建议 + 绝对禁忌 + 动作处方 + 营养提示 + 今天最该做） ================= */
   var RULES = [
     { id: 1,  sedentary: 'gt6',  sleep: 'lt6',   hr: 'high',   steps: 'lt3000',     risk: '红灯（恢复不足）', riskLevel: 'red',
@@ -442,6 +446,7 @@
     var aiBtn = document.getElementById('aiBtn');
     var aiCard = document.getElementById('ai-card');
     var aiReply = document.getElementById('aiReply');
+    var aiRetryBtn = document.getElementById('aiRetryBtn');
     var aiAskForm = document.getElementById('aiAskForm');
     var aiQuestion = document.getElementById('aiQuestion');
     var aiAskBtn = document.getElementById('aiAskBtn');
@@ -714,35 +719,134 @@
     });
 
     /* --- AI 私教 --- */
+    var lastAiPayload = null;   /* 记住最近一次请求，失败后可原地重试 */
+    var lastAiWaiting = '';
+
     function setAiBusy(busy) {
       aiBtn.disabled = busy;
       aiAskBtn.disabled = busy;
+      aiRetryBtn.disabled = busy;
       aiBtn.textContent = busy ? AI_BTN_LOADING : AI_BTN_TEXT;
     }
 
     function askCoach(payload, waitingText) {
+      lastAiPayload = payload;
+      lastAiWaiting = waitingText || '';
+
       setAiBusy(true);
       aiCard.hidden = false;
+      aiRetryBtn.hidden = true;
       aiReply.textContent = waitingText || '教练正在阅读你的数据…';
+
+      var startedAt = Date.now();
+      var timer = null;
+      var ticker = null;
+      var streaming = false;   /* 已经开始逐字输出后，就不再算超时 */
+      var controller = (typeof AbortController === 'function') ? new AbortController() : null;
+
+      function clearTimers() {
+        if (ticker) { clearInterval(ticker); ticker = null; }
+        if (timer) { clearTimeout(timer); timer = null; }
+      }
+
+      /* 每秒刷新等待时长：手机上长时间没有反馈，很容易让人以为页面卡死了 */
+      ticker = setInterval(function () {
+        if (!aiBtn.disabled || streaming) return;
+        var sec = Math.round((Date.now() - startedAt) / 1000);
+        if (sec < 3) return;
+        aiReply.textContent = sec >= AI_SLOW_TIP_SEC
+          ? '网络有点慢，教练还在想（已等 ' + sec + ' 秒）…'
+          : '教练正在思考…（已等 ' + sec + ' 秒）';
+      }, 1000);
+
+      /* 首字节超时：接口迟迟不开始返回就主动中断，而不是无限转圈 */
+      if (controller) {
+        timer = setTimeout(function () { controller.abort(); }, AI_TIMEOUT_MS);
+      }
+
+      function finish() {
+        clearTimers();
+        setAiBusy(false);
+      }
+
+      /* 拿到完整文字（老版 Worker 走这里，或浏览器不支持流） */
+      function settle(reply) {
+        var text = String(reply || '').trim();
+        if (!text) throw new Error('EMPTY_REPLY');
+        clearTimers();
+        aiReply.textContent = text;
+        aiRetryBtn.hidden = true;
+      }
 
       return fetch(AI_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller ? controller.signal : undefined
       }).then(function (res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        return res.json();
-      }).then(function (data) {
-        var reply = data && data.reply ? String(data.reply).trim() : '';
-        if (!reply) throw new Error('empty reply');
-        aiReply.textContent = reply;
-      }).catch(function () {
-        /* 网络异常、非 2xx、缺 reply 字段，统一友好提示 */
-        aiReply.textContent = AI_ERROR_TEXT;
+
+        var ctype = (res.headers && res.headers.get) ? (res.headers.get('content-type') || '') : '';
+
+        /* 兼容老版 Worker：返回 { reply: "..." } 的 JSON */
+        if (ctype.indexOf('application/json') !== -1) {
+          return res.json().then(function (data) {
+            return settle(data && data.reply);
+          });
+        }
+
+        /* 浏览器不支持流式读取（老内核），退化为整段文本 */
+        if (!res.body || typeof res.body.getReader !== 'function' || typeof TextDecoder === 'undefined') {
+          return res.text().then(settle);
+        }
+
+        /* 新版 Worker：逐字返回，边收边显示 */
+        var reader = res.body.getReader();
+        var decoder = new TextDecoder('utf-8');
+        var text = '';
+
+        return (function pump() {
+          return reader.read().then(function (chunk) {
+            if (chunk.done) {
+              return settle(text);
+            }
+            if (!streaming) {
+              streaming = true;
+              clearTimers();   /* 已经出字了，后面只是生成速度，不再计时 */
+            }
+            text += decoder.decode(chunk.value, { stream: true });
+            aiReply.textContent = text;
+            return pump();
+          });
+        })();
+      }).catch(function (err) {
+        /* 按失败原因分开提示，手机上没有控制台也能看出大概问题 */
+        var name = (err && err.name) || '';
+        var msg = (err && err.message) || '';
+
+        if (name === 'AbortError' || /abort/i.test(msg)) {
+          aiReply.textContent = '等了 ' + Math.round(AI_TIMEOUT_MS / 1000) +
+            ' 秒教练还没开始回复，网络可能不太稳定。点下面「↻ 再试一次」。';
+        } else if (/^HTTP 5/.test(msg)) {
+          aiReply.textContent = 'AI 服务暂时不可用（' + msg + '），过一会儿再试。';
+        } else if (/^HTTP /.test(msg)) {
+          aiReply.textContent = 'AI 接口返回异常（' + msg + '），点下面「↻ 再试一次」。';
+        } else if (msg === 'EMPTY_REPLY') {
+          aiReply.textContent = 'AI 这次没给出内容，点下面「↻ 再试一次」。';
+        } else {
+          /* 断网、DNS 失败、跨域被拦，fetch 会直接 reject */
+          aiReply.textContent = AI_ERROR_TEXT + '（网络没连通，请检查手机网络再重试）';
+        }
+        aiRetryBtn.hidden = false;
       }).then(function () {
-        setAiBusy(false);
+        finish();
       });
     }
+
+    aiRetryBtn.addEventListener('click', function () {
+      if (!lastAiPayload || aiBtn.disabled) return;
+      askCoach(lastAiPayload, lastAiWaiting);
+    });
 
     /* 四项数据拼成一句话，例如：久坐8小时，睡眠6小时，心率75，步数2500 */
     function buildUserData() {
@@ -918,6 +1022,14 @@
     /* --- 时间驱动的昼夜主题 --- */
     applyThemeByClock();
     setInterval(applyThemeByClock, 10 * 60 * 1000);
+
+    /* --- 接口预热：页面加载后先做一次 DNS/TLS 握手，手机弱网下首次点击会快一些 --- */
+    setTimeout(function () {
+      try {
+        fetch(AI_ENDPOINT, { method: 'GET', mode: 'no-cors', cache: 'no-store' })
+          .catch(function () { /* 预热失败不影响正常使用 */ });
+      } catch (e) {}
+    }, 2500);
 
     /* 清理旧版手动主题留下的缓存键（本版已改为按时间自动切换） */
     try { localStorage.removeItem('shiftHealthTheme'); } catch (e) {}

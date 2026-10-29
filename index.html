@@ -11,7 +11,7 @@
       document.documentElement.setAttribute('data-theme', (h >= 6 && h < 18) ? 'day' : 'night');
     })();
   </script>
-  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="stylesheet" href="style.css?v=12">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f7d5b'/%3E%3Cpath d='M8 17h4l2-6 3 10 2-4h5' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <!-- Open Graph：分享到微信/社交平台时展示的标题、简介和缩略图 -->
   <meta property="og:type" content="website">
@@ -130,6 +130,7 @@
         <div id="ai-card" class="ai-card" hidden>
           <p class="ai-title">🤖 AI 私教补充建议</p>
           <div class="ai-content" id="aiReply" aria-live="polite"></div>
+          <button type="button" id="aiRetryBtn" class="ai-retry" hidden>↻ 再试一次</button>
           <form class="ai-ask" id="aiAskForm" autocomplete="off">
             <input type="text" id="aiQuestion" placeholder="还想追问点什么？例如：晚上能跑步吗" maxlength="120">
             <button type="submit" id="aiAskBtn">追问</button>
@@ -196,6 +197,6 @@
   </div>
 
   <script src="html2canvas.min.js" onerror="this.onerror=null;this.src='https://fastly.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'"></script>
-  <script src="script.js?v=10"></script>
+  <script src="script.js?v=12"></script>
 </body>
 </html>
