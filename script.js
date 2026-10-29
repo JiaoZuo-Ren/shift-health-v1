@@ -1482,7 +1482,7 @@
           lastHydration = hydration;
 
           /* 存历史（最多 7 条） */
-          saveHistory({
+          var record = {
             ts: Date.now(),
             mode: currentMode,
             sedentary: sedentary,
@@ -1490,7 +1490,9 @@
             hr: hr,
             steps: steps,
             vitality: vitality
-          });
+          };
+          saveHistory(record);
+          saveTrendDay(record);      /* 🆕 同步写进「每日趋势日志」，喂给 AI 长记忆 */
           updateLastTestLabel();
           addCheckin();              /* 🆕 记一笔当天打卡（供「记录」页算连续天数） */
           updateGoalTip(steps, sedentary);   /* 🆕 对照个人目标给鼓励提示 */
@@ -1588,7 +1590,7 @@
       setAiBusy(true);
       aiCard.hidden = false;
       aiRetryBtn.hidden = true;
-      aiReply.textContent = waitingText || '教练正在阅读你的数据…';
+      aiReply.textContent = waitingText || '教练正在翻你这几天的档案…';
 
       var startedAt = Date.now();
       var timer = null;
@@ -1723,6 +1725,173 @@
       return parts.join('，');
     }
 
+    /* ================= 🆕 AI 长记忆：把近 7 天历史整理成「趋势档案」 =================
+       两个数据源合并：
+       ① 每日趋势日志（一天一条，同一天重复测试只留最后一次，这才撑得起「近 7 天」）
+       ② 历史记录兜底（老用户之前只存了这个，按天去重后并进来，不丢数据）
+       今天的数据走 buildUserData 单独传，这里排除掉，避免重复喂给模型。 */
+    var TREND_MAX_DAYS = 7;
+    var TREND_KEY = 'shiftHealthTrendLog';
+
+    function loadTrendLog() {
+      try {
+        var arr = JSON.parse(localStorage.getItem(TREND_KEY) || '[]');
+        return Array.isArray(arr) ? arr : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    /* 每天只保留一条，最多 7 天：用户一天测 5 次也不会把历史挤爆 */
+    function saveTrendDay(rec) {
+      if (!rec || !rec.ts) return;
+      var key = dayStamp(new Date(rec.ts));
+      var arr = loadTrendLog().filter(function (x) { return x && x.date !== key; });
+      arr.unshift({
+        date: key, ts: rec.ts, mode: rec.mode,
+        sleep: rec.sleep, sedentary: rec.sedentary,
+        steps: rec.steps, vitality: rec.vitality
+      });
+      if (arr.length > TREND_MAX_DAYS) arr = arr.slice(0, TREND_MAX_DAYS);
+      try { localStorage.setItem(TREND_KEY, JSON.stringify(arr)); } catch (e) {}
+    }
+
+    function trendDays() {
+      var today = dayStamp(new Date());
+      var map = {};
+      var keys = [];
+
+      function put(key, rec) {
+        if (!key || map[key]) return;
+        map[key] = rec;
+        keys.push(key);
+      }
+
+      loadTrendLog().forEach(function (r) {
+        if (r && r.date) put(r.date, r);
+      });
+
+      loadHistory().forEach(function (r) {
+        if (!r || !r.ts) return;
+        var key = dayStamp(new Date(r.ts));
+        put(key, {
+          date: key, ts: r.ts, mode: r.mode,
+          sleep: r.sleep, sedentary: r.sedentary,
+          steps: r.steps, vitality: r.vitality
+        });
+      });
+
+      /* 'YYYY-MM-DD' 字典序即时间序，升序 = 由旧到新 */
+      var days = keys.filter(function (k) { return k !== today; }).sort();
+      if (days.length > TREND_MAX_DAYS - 1) {
+        days = days.slice(days.length - (TREND_MAX_DAYS - 1));
+      }
+
+      return days.map(function (k) { return { key: k, rec: map[k] }; });
+    }
+
+    function trendNum(v) {
+      var n = parseFloat(v);
+      return isFinite(n) ? n : null;
+    }
+
+    function trendDayLabel(key) {
+      var p = String(key).split('-');
+      return parseInt(p[1], 10) + '月' + parseInt(p[2], 10) + '日';
+    }
+
+    /* 返回一段纯文本：数据 + 趋势信号（信号由本地判定，省得模型自己算错） */
+    function buildTrendBrief() {
+      var days = trendDays();
+      if (!days.length) return '';
+
+      var lines = [];
+      var sleeps = [];      /* 旧 → 新 */
+      var sedentarys = [];
+      var stepsArr = [];
+      var vitals = [];
+      var nightCount = 0;
+
+      days.forEach(function (d) {
+        var r = d.rec;
+        var seg = [];
+        var sleep = trendNum(r.sleep);
+        var sed = trendNum(r.sedentary);
+        var steps = trendNum(r.steps);
+        var vit = trendNum(r.vitality);
+
+        if (sleep !== null) { seg.push('睡眠' + sleep + 'h'); sleeps.push(sleep); }
+        if (sed !== null) { seg.push('久坐' + sed + 'h'); sedentarys.push(sed); }
+        if (steps !== null) { seg.push('步数' + steps); stepsArr.push(steps); }
+        if (vit !== null) { seg.push('活力' + vit); vitals.push(vit); }
+        if (r.mode === 'night') { seg.push('夜班'); nightCount++; }
+
+        if (seg.length) lines.push(trendDayLabel(d.key) + ' ' + seg.join('、'));
+      });
+
+      if (!lines.length) return '';
+
+      var signals = [];
+
+      /* ① 连续熬夜：从最近一天往回数，睡眠 < 6 小时 */
+      var shortRun = 0;
+      for (var i = days.length - 1; i >= 0; i--) {
+        var s = trendNum(days[i].rec.sleep);
+        if (s !== null && s < 6) shortRun += 1;
+        else break;
+      }
+      if (shortRun >= 2) {
+        signals.push('已连续 ' + shortRun + ' 天睡眠不足 6 小时，正在透支');
+      }
+
+      /* ② 活力值走势（首尾对比，差值 ≥6 才算趋势） */
+      if (vitals.length >= 2) {
+        var vFirst = vitals[0];
+        var vLast = vitals[vitals.length - 1];
+        var vDiff = vLast - vFirst;
+        if (vDiff >= 6) signals.push('活力值从 ' + vFirst + ' 涨到 ' + vLast + '，在稳步进步');
+        else if (vDiff <= -6) signals.push('活力值从 ' + vFirst + ' 掉到 ' + vLast + '，状态在下滑');
+      }
+
+      /* ③ 久坐均值 */
+      if (sedentarys.length >= 2) {
+        var sedSum = 0;
+        sedentarys.forEach(function (v) { sedSum += v; });
+        var sedAvg = Math.round((sedSum / sedentarys.length) * 10) / 10;
+        if (sedAvg >= 8) signals.push('日均久坐 ' + sedAvg + ' 小时，偏高');
+      }
+
+      /* ④ 步数走势 */
+      if (stepsArr.length >= 2) {
+        var stFirst = stepsArr[0];
+        var stLast = stepsArr[stepsArr.length - 1];
+        if (stLast - stFirst >= 1500) signals.push('步数从 ' + stFirst + ' 涨到 ' + stLast + '，动起来了');
+        else if (stFirst - stLast >= 1500) signals.push('步数从 ' + stFirst + ' 掉到 ' + stLast + '，越走越少');
+      }
+
+      var text = '【近 ' + (days.length + 1) + ' 天档案（不含今天，由旧到新）】' +
+        lines.join('；') + '。';
+
+      if (days.length === 1) {
+        text += '（历史仅 1 天，趋势仅供参考）';
+      }
+      if (nightCount >= 2) {
+        text += '【夜班】近 ' + days.length + ' 天里有 ' + nightCount + ' 天是夜班/倒时差。';
+      }
+      if (signals.length) {
+        text += '【趋势信号】' + signals.join('；') + '。';
+      }
+
+      return text;
+    }
+
+    /* 完整投喂内容：今日数据 + 近 7 天档案 */
+    function buildAiUserData() {
+      var today = buildUserData();
+      var trend = buildTrendBrief();
+      return trend ? (today + '\n' + trend) : today;
+    }
+
     aiBtn.addEventListener('click', function () {
       if (!lastOut) {
         showToast('还没有结果，先点“生成今天的建议”');
@@ -1736,7 +1905,7 @@
         return;
       }
       askCoach({
-        userData: buildUserData(),
+        userData: buildAiUserData(),
         baseAdvice: activityEl.textContent,
         status: riskBadge.textContent
       });
@@ -1757,7 +1926,7 @@
       if (aiBtn.disabled) return;
 
       askCoach({
-        userData: buildUserData(),
+        userData: buildAiUserData(),
         baseAdvice: activityEl.textContent + '\n【我的追问】' + q,
         status: riskBadge.textContent
       }, '教练正在回答你的追问…').then(function () {
@@ -1791,6 +1960,28 @@
     var shareOverlay = document.getElementById('shareOverlay');
     var shareCard = document.getElementById('shareCard');
     var shareBtn = document.getElementById('shareBtn');
+    var shareRoast = document.getElementById('shareRoast');
+
+    /* 🆕 传播文案：按活力值分档，越极端越好转发（炫耀 or 自嘲） */
+    function shareRoastOf(score) {
+      var s = parseFloat(score);
+      if (!isFinite(s)) s = 0;
+      if (s >= 80) {
+        return { text: '超人状态！今天打败了 85% 的久坐打工人', cls: 'roast-high' };
+      }
+      if (s >= 60) {
+        return { text: '中规中矩，今天打败了 60% 的打工人', cls: 'roast-mid' };
+      }
+      return { text: '电量告急！已击败 10% 的熬夜党，今天必须躺平', cls: 'roast-low' };
+    }
+
+    function renderShareRoast(score) {
+      if (!shareRoast) return;
+      var r = shareRoastOf(score);
+      shareRoast.textContent = r.text;
+      shareRoast.className = 'share-roast ' + r.cls;
+      shareRoast.hidden = false;
+    }
 
     shareBtn.addEventListener('click', function () {
       if (!lastOut) {
@@ -1807,6 +1998,7 @@
       shareBtn.textContent = '生成中…';
       document.getElementById('shareMode').textContent = currentMode === 'day' ? '久坐上班族' : '夜班/倒时差';
       document.getElementById('shareScore').textContent = lastVitality;
+      renderShareRoast(lastVitality);      /* 🆕 分数下方的金句 */
       document.getElementById('shareRisk').textContent = lastOut.risk;
       document.getElementById('shareAdvice').textContent = lastOut.advice;
       document.getElementById('shareKey').textContent = lastOut.key;

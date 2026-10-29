@@ -12,7 +12,7 @@
       document.documentElement.setAttribute('data-theme', (h >= 6 && h < 18) ? 'day' : 'night');
     })();
   </script>
-  <link rel="stylesheet" href="style.css?v=21">
+  <link rel="stylesheet" href="style.css?v=22">
   <!-- PWA：添加到主屏幕所需 -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2f7d5b">
@@ -328,7 +328,7 @@
           <div class="sheet-dock">
             <button type="button" id="aiEntryBtn" class="dock-btn dock-ai">
               <span class="dock-ico" aria-hidden="true">🤖</span>
-              <span class="dock-txt"><strong>AI 私教</strong><em>结合昨天补两句</em></span>
+              <span class="dock-txt"><strong>AI 私教</strong><em>结合近 7 天趋势</em></span>
             </button>
             <button type="button" id="breatheBtn" class="dock-btn dock-breathe">
               <span class="dock-ico" aria-hidden="true">🧘</span>
@@ -399,6 +399,8 @@
               <span class="share-score-unit">/ 100</span>
             </div>
             <p class="share-vitality-label">今日活力值</p>
+            <!-- 🆕 社交传播文案：按分数动态生成，截图里最抢眼的一行 -->
+            <p class="share-roast" id="shareRoast" hidden></p>
             <p class="share-risk" id="shareRisk"></p>
             <div class="share-block">
               <h3>活动建议</h3>
@@ -435,6 +437,6 @@
   </div><!-- /phone-shell -->
 
   <script src="html2canvas.min.js" onerror="this.onerror=null;this.src='https://fastly.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'"></script>
-  <script src="script.js?v=21"></script>
+  <script src="script.js?v=22"></script>
 </body>
 </html>

@@ -1311,6 +1311,37 @@ body.sheet-open { overflow: hidden; }
   color: #ffd98a;
 }
 
+/* 🆕 传播文案：分数下方的一句话金句，截图时按分数换配色 */
+.share-roast {
+  display: inline-block;
+  max-width: 94%;
+  box-sizing: border-box;
+  margin: 16px auto 6px;
+  padding: 12px 22px;
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.45;
+  letter-spacing: 0.5px;
+  color: #3a2600;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ffe9a3 0%, #ffb02e 100%);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+}
+
+/* 分数 60-79：稳住了，青绿系 */
+.share-roast.roast-mid {
+  color: #0c2e22;
+  background: linear-gradient(135deg, #a8f0d3 0%, #3fc294 100%);
+}
+
+/* 分数 < 60：电量告急，暖红系，自嘲感更强 */
+.share-roast.roast-low {
+  color: #40120c;
+  background: linear-gradient(135deg, #ffc3b6 0%, #ff6f57 100%);
+}
+
+.share-roast[hidden] { display: none; }
+
 .share-date {
   margin: 30px 0 0;
   font-size: 13px;

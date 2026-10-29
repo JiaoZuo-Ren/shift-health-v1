@@ -36,7 +36,7 @@ export default {
       return json({ error: 'invalid json' }, 400, cors);
     }
 
-    const userData = String(body.userData || '').slice(0, 500);
+    const userData = String(body.userData || '').slice(0, 900);
     const baseAdvice = String(body.baseAdvice || '').slice(0, 1500);
     /* 前端传过来的红黄绿灯判定（老版本前端没有这个字段，兜底为未判定） */
     const status = String(body.status || '未判定').slice(0, 60);
@@ -46,14 +46,21 @@ export default {
     }
 
     const systemPrompt =
-      '你是一位专业的运动康复私教，说话像朋友一样自然，严禁给出任何医疗诊断或用药建议。';
+      '你是一位专业的健康教练，说话像朋友一样自然，既会严格也会鼓励。' +
+      '严禁给出任何医疗诊断、疾病判断或用药建议。';
 
-    /* 因果逻辑：昨日数据是「因」，今日安排是「果」 */
+    /* 因果逻辑：昨日数据是「因」，今日安排是「果」；
+       新版前端还会带上【近 N 天档案】和【趋势信号】，用于宏观评价 */
     const userPrompt =
       '用户昨日的健康账单是：' + userData + '；系统判定：' + status + '。\n' +
       '系统给出的基础建议是：' + baseAdvice + '。\n\n' +
-      '请用不超过 150 字，结合他昨日的数据，为他规划今天该怎么做。' +
-      '语气像朋友，严禁医疗诊断。纯文本，不要 Markdown 符号。';
+      '请先看账单里的【近 N 天档案】和【趋势信号】，务必结合过去几天的趋势给出宏观评价：\n' +
+      '① 如果他连续熬夜（连续 2 天以上睡眠不足 6 小时），用严厉但关心的语气警告他，' +
+      '把代价说透（白天注意力、代谢、心血管负担），不要轻飘飘带过；\n' +
+      '② 如果这周在进步（睡眠变长、久坐减少、步数变多、活力值上升），大力夸奖他，明确指出进步在哪；\n' +
+      '③ 如果档案不足 2 天或看不出趋势，就只聚焦今天该怎么调整，不要硬编趋势。\n' +
+      '最后给出今天最主要的一条具体行动。\n' +
+      '总字数不超过 180 字，语气像朋友，严禁医疗诊断。纯文本，不要 Markdown 符号。';
 
     let upstream;
     try {
@@ -74,7 +81,7 @@ export default {
             { role: 'user', content: userPrompt }
           ],
           temperature: 0.7,
-          max_tokens: 300,
+          max_tokens: 400,
           stream: true
         })
       });
