@@ -2263,3 +2263,172 @@ body.sheet-open .app-scroll { overflow: hidden; }
   line-height: 1.8;
   color: var(--ink);
 }
+
+/* ============================================================
+   v21 追加段：启动屏 / 光晕跟随 / 环形扫描 —— 纯视觉，零逻辑
+   ============================================================ */
+
+/* ---------- 1. App 启动屏：随日夜模式变色，2 秒向上滑出 ---------- */
+.splash {
+  position: absolute;
+  inset: 0;
+  z-index: 200;                      /* 盖住一切浮层（toast 120 之上） */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(47, 133, 90, 0.22), transparent 55%),
+    var(--bg-base);
+  transition: transform 0.65s cubic-bezier(0.6, 0.05, 0.35, 1), opacity 0.65s ease;
+  will-change: transform;
+}
+
+/* 上滑退场：transform + 渐隐，播完由 JS 置 hidden */
+.splash.is-leaving {
+  transform: translateY(-102%);
+  opacity: 0.35;
+}
+
+.splash-icon {
+  width: 96px;
+  height: 96px;
+  border-radius: 24px;
+  box-shadow: 0 0 30px rgba(47, 133, 90, 0.5);
+  animation: splashBreath 1.8s ease-in-out infinite;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* 图标呼吸发光：放大 + 光晕强弱 */
+@keyframes splashBreath {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 22px rgba(47, 133, 90, 0.35); }
+  50%      { transform: scale(1.07); box-shadow: 0 0 58px rgba(47, 133, 90, 0.75); }
+}
+
+.splash-name {
+  margin: 6px 0 0;
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--ink);
+}
+
+.splash-sub {
+  margin: 0;
+  font-size: 12.5px;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+
+/* ---------- 2. 毛玻璃卡片的光晕跟随 ---------- */
+/* 原理：指针位置写进卡片自己的 --mx/--my，::after 用
+   radial-gradient 在那个坐标画一团柔光；.is-glowing 控制显隐 */
+.glow-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.glow-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    260px circle at var(--mx, 50%) var(--my, 50%),
+    var(--glow-color, rgba(63, 174, 118, 0.16)),
+    transparent 68%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;              /* 绝不拦截点击 */
+}
+
+.glow-card.is-glowing::after { opacity: 1; }
+
+/* 夜间模式换成冷色调光晕，避免夜里刺眼 */
+[data-theme="night"] .glow-card::after {
+  background: radial-gradient(
+    260px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(129, 178, 255, 0.14),
+    transparent 68%
+  );
+}
+
+/* ---------- 3. 生成时的科技扫描光环 ---------- */
+.ring-scan {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.ring-scan.is-on { display: flex; }
+
+/* conic-gradient 扇形光弧 + mask 挖空成细环，绕中心匀速旋转 */
+.ring-scan-line {
+  position: absolute;
+  inset: 5%;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 290deg,
+    rgba(63, 174, 118, 0.25) 330deg,
+    rgba(63, 174, 118, 0.95) 358deg,
+    transparent 360deg
+  );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+  animation: ringScanSpin 0.9s linear infinite;
+}
+
+@keyframes ringScanSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* 中心呼吸小圆点：扫描进行中的"雷达"感 */
+.ring-scan.is-on::after {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(63, 174, 118, 0.85);
+  box-shadow: 0 0 18px rgba(63, 174, 118, 0.8);
+  animation: scanDot 0.9s ease-in-out infinite;
+}
+
+@keyframes scanDot {
+  0%, 100% { transform: scale(0.8); opacity: 0.6; }
+  50%      { transform: scale(1.15); opacity: 1; }
+}
+
+/* ---------- 环形充满瞬间的高光脉冲 ---------- */
+/* 结果出来那一刻给进度条加 is-flash：描边瞬间变粗 + 强发光，1 秒内回落 */
+.ring-bar.is-flash {
+  animation: ringFlash 1s cubic-bezier(0.2, 0.8, 0.3, 1) 1;
+}
+
+@keyframes ringFlash {
+  0% {
+    stroke-width: 22;
+    filter: drop-shadow(0 0 22px currentColor) brightness(1.6);
+  }
+  100% {
+    stroke-width: 15;
+    filter: drop-shadow(0 0 8px currentColor) brightness(1);
+  }
+}
+
+/* ---------- 无障碍：系统开启"减少动态效果"时全部让位 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .splash { transition: none; }
+  .splash-icon { animation: none; }
+  .ring-scan { display: none !important; }   /* 静止的扫描弧没有意义，直接不显示 */
+  .ring-bar.is-flash { animation: none; }
+}

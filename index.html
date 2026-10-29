@@ -12,7 +12,7 @@
       document.documentElement.setAttribute('data-theme', (h >= 6 && h < 18) ? 'day' : 'night');
     })();
   </script>
-  <link rel="stylesheet" href="style.css?v=20">
+  <link rel="stylesheet" href="style.css?v=21">
   <!-- PWA：添加到主屏幕所需 -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2f7d5b">
@@ -41,6 +41,13 @@
   <div class="phone-shell">
     <div class="phone" id="phone">
 
+      <!-- 🆕 启动屏：全屏覆盖，图标呼吸发光，2 秒后向上滑出 -->
+      <div class="splash" id="splash" aria-hidden="true">
+        <img class="splash-icon" src="icon-192.png" alt="" draggable="false">
+        <p class="splash-name">今日活动建议</p>
+        <p class="splash-sub">用昨日的账单，定今日的预算</p>
+      </div>
+
       <!-- 动态流光背景：只在手机壳内部漂移 -->
       <div class="aurora" aria-hidden="true">
         <span class="blob blob-1"></span>
@@ -64,14 +71,14 @@
           </header>
 
           <!-- 🆕 健康金句盲盒：每次刷新随机一句，打字机效果，纯本地不花钱 -->
-          <div class="glass quote-card" id="quoteCard" aria-label="今日健康金句">
+          <div class="glass glow-card quote-card" id="quoteCard" aria-label="今日健康金句">
             <span class="quote-ico" aria-hidden="true">💡</span>
             <p class="quote-text" id="quoteText" aria-live="polite"></p>
             <span class="quote-refresh" id="quoteRefresh" title="换一句" role="button" tabindex="0" aria-label="换一句金句">↻</span>
           </div>
 
           <!-- 🆕 喝水打卡：一杯一记，localStorage 记录，跨天自动清零 -->
-          <div class="glass water-card" id="waterCard" aria-label="喝水打卡">
+          <div class="glass glow-card water-card" id="waterCard" aria-label="喝水打卡">
             <span class="water-ico" aria-hidden="true">💧</span>
             <div class="water-txt">
               <strong>今日饮水：<em id="waterCount">0</em> / 8 杯</strong>
@@ -81,7 +88,7 @@
           </div>
 
           <!-- 输入表单：结果全部放进底部抽屉 -->
-          <section class="glass form-card" aria-label="输入数据">
+          <section class="glass glow-card form-card" aria-label="输入数据">
             <div class="field" id="fieldSedentary">
               <label for="sedentary">昨日久坐时长（小时）</label>
               <input type="number" id="sedentary" inputmode="decimal" placeholder="例如 7" min="0" max="24" step="0.1" required>
@@ -112,7 +119,7 @@
           </button>
 
           <!-- 🆕 久坐番茄钟：50 分钟专注计时，到点提醒起来活动 -->
-          <div class="glass pomo-card" id="pomoCard">
+          <div class="glass glow-card pomo-card" id="pomoCard">
             <div class="pomo-head">
               <h2>🍅 久坐番茄钟</h2>
               <p class="pomo-cap">每坐 50 分钟，就该起来活动 2 分钟。</p>
@@ -145,7 +152,7 @@
           </header>
 
           <!-- 🆕 连续打卡天数：按生成建议的日期统计 -->
-          <div class="glass streak-card" id="streakCard">
+          <div class="glass glow-card streak-card" id="streakCard">
             <span class="streak-fire" aria-hidden="true">🔥</span>
             <div class="streak-txt">
               <strong id="streakDays">0</strong>
@@ -154,7 +161,7 @@
           </div>
 
           <!-- 🆕 近 7 日活力值趋势：纯 CSS 柱状图，颜色随分数变化 -->
-          <div class="glass trend-card">
+          <div class="glass glow-card trend-card">
             <h2>📈 近 7 日活力值趋势</h2>
             <div class="trend-bars" id="trendBars" role="img" aria-label="最近 7 天活力值柱状图"></div>
             <p class="trend-cap">每天取最后一次记录 · 柱子越高状态越好 · 没记录的天置灰</p>
@@ -176,7 +183,7 @@
           </header>
 
           <!-- 🆕 开发者的话 -->
-          <div class="glass me-card dev-card">
+          <div class="glass glow-card me-card dev-card">
             <h2>👋 开发者的话</h2>
             <p>你好，我是一名大四学生。做这个小工具的起点很简单：我自己常年久坐写代码，作息一乱，白天整个人都是懵的。网上能查到的健康知识又多又杂，看完更不知道"今天到底该干嘛"。</p>
             <p>所以我想把那些复杂的指标翻译成一句人话：今天该动还是该歇。所有建议都来自一张写死的规则表，不猜、不编、不吓唬人，也没有广告和追踪。</p>
@@ -184,7 +191,7 @@
           </div>
 
           <!-- 🆕 每日目标设置：保存到 localStorage，生成建议时给鼓励提示 -->
-          <div class="glass me-card goal-card">
+          <div class="glass glow-card me-card goal-card">
             <h2>⚙️ 每日目标设置</h2>
             <div class="goal-row">
               <label for="goalSteps">每日步数目标（步）</label>
@@ -199,7 +206,7 @@
           </div>
 
           <!-- 🆕 睡眠周期小科普：折叠文本，默认收起 -->
-          <div class="glass me-card edu-card">
+          <div class="glass glow-card me-card edu-card">
             <details>
               <summary>📖 关于健康周期：为什么睡够 7 小时还不够？</summary>
               <p>人的睡眠不是匀速的，而是以约 90 分钟为一个周期循环：浅睡 → 深睡 → 快速眼动（REM）。深睡负责修复身体，REM 负责整理情绪和记忆。</p>
@@ -208,13 +215,13 @@
             </details>
           </div>
 
-          <div class="glass me-card">
+          <div class="glass glow-card me-card">
             <h2>📮 联系我</h2>
             <p>觉得有用？有问题或建议？<a href="mailto:2179369131@qq.com">2179369131@qq.com</a></p>
             <p>项目开源在 GitHub：<a href="https://github.com/jiaozuo-ren/shift-health-v1" target="_blank" rel="noopener">github.com/jiaozuo-ren</a></p>
           </div>
 
-          <div class="glass me-card">
+          <div class="glass glow-card me-card">
             <h2>⚠️ 免责声明</h2>
             <p>本工具只做固定规则判断，输出内容仅为一般性的活动建议，不构成任何医疗诊断或治疗意见。如果你有基础疾病、正在服药，或出现胸痛、头晕、气短等明显不适，请及时就医，不要依赖本工具。</p>
           </div>
@@ -260,7 +267,7 @@
           <div class="sheet-body" id="sheetBody">
 
             <!-- 巨大的动态环形活力值 -->
-            <div class="panel ring-panel">
+            <div class="panel glow-card ring-panel">
               <div class="ring-wrap">
                 <svg class="ring" viewBox="0 0 220 220" role="img" aria-label="今日活力值环形进度">
                   <circle class="ring-track" cx="110" cy="110" r="92"></circle>
@@ -270,6 +277,8 @@
                   <span class="ring-score" id="vitalityScore">--</span>
                   <span class="ring-label">今日活力值</span>
                 </div>
+                <!-- 🆕 生成时的科技扫描光环：结果出来后消失 -->
+                <div class="ring-scan" id="ringScan" aria-hidden="true"><span class="ring-scan-line"></span></div>
                 <!-- 动态情绪小精灵：随分数换图标和动画 -->
                 <span class="ring-emoji" id="ringEmoji" aria-hidden="true">🙂</span>
               </div>
@@ -277,7 +286,7 @@
             </div>
 
             <!-- 模块一：状态诊断 -->
-            <div class="panel">
+            <div class="panel glow-card">
               <h2><span class="panel-ico">💡</span>状态诊断</h2>
               <p class="risk-badge" id="riskBadge"></p>
               <p class="cause" id="causeExplain"></p>
@@ -289,21 +298,21 @@
             <div class="goal-tip" id="goalTip" hidden></div>
 
             <!-- 模块二：运动与拉伸处方 -->
-            <div class="panel">
+            <div class="panel glow-card">
               <h2><span class="panel-ico">🏃</span>运动与拉伸处方</h2>
               <p class="panel-text" id="actionAdvice"></p>
               <p class="panel-text sub" id="microAdvice"></p>
             </div>
 
             <!-- 模块三：饮食与营养干预 -->
-            <div class="panel">
+            <div class="panel glow-card">
               <h2><span class="panel-ico">🥗</span>饮食与营养干预</h2>
               <p class="panel-text" id="nutritionAdvice"></p>
               <p class="panel-text sub" id="hydrationAdvice"></p>
             </div>
 
             <!-- 今天最该做的一件事 -->
-            <div class="panel key-panel">
+            <div class="panel glow-card key-panel">
               <h2><span class="panel-ico">🎯</span>今天最该做的一件事</h2>
               <p class="key-text" id="keyAdvice"></p>
             </div>
@@ -426,6 +435,6 @@
   </div><!-- /phone-shell -->
 
   <script src="html2canvas.min.js" onerror="this.onerror=null;this.src='https://fastly.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'"></script>
-  <script src="script.js?v=20"></script>
+  <script src="script.js?v=21"></script>
 </body>
 </html>

@@ -517,6 +517,10 @@
     var pomodoroOk = document.getElementById('pomodoroOk');
     var aiQuotaEl = document.getElementById('aiQuota');
 
+    /* 🆕 v21：启动屏 + 环形扫描（纯视觉，不碰任何逻辑） */
+    var splashEl = document.getElementById('splash');
+    var ringScan = document.getElementById('ringScan');
+
     /* 🆕 v20：喝水打卡 / 首页呼吸入口 / 趋势图 / 目标设置 */
     var waterCount = document.getElementById('waterCount');
     var waterBtn = document.getElementById('waterBtn');
@@ -1357,6 +1361,63 @@
     });
 
     /* --- 生成建议 --- */
+    /* ================= 🆕 v21 三个纯视觉动效（不碰任何业务逻辑） ================= */
+
+    /* --- 1. 启动屏：2 秒后向上滑出 --- */
+    if (splashEl) {
+      setTimeout(function () {
+        splashEl.classList.add('is-leaving');
+        setTimeout(function () { splashEl.hidden = true; }, 700);
+      }, 2000);
+    }
+
+    /* --- 2. 生成时的环形扫描光环 --- */
+    function startRingScan() {
+      if (ringScan) ringScan.classList.add('is-on');
+    }
+
+    function stopRingScan() {
+      if (ringScan) ringScan.classList.remove('is-on');
+    }
+
+    /* --- 3. 环形充满瞬间的高光脉冲（一次性，播完自动摘掉） --- */
+    function flashRing() {
+      if (!ringBar) return;
+      ringBar.classList.remove('is-flash');
+      void ringBar.getBoundingClientRect();   /* 强制重排，同分重生成也能重播 */
+      ringBar.classList.add('is-flash');
+      setTimeout(function () { ringBar.classList.remove('is-flash'); }, 1100);
+    }
+
+    /* --- 4. 毛玻璃卡片的光晕跟随：指到哪亮到哪，移出即灭 ---
+       用事件委托挂一个监听，避免十几个卡片各绑一套 */
+    var lastGlowCard = null;
+
+    function moveGlow(e) {
+      var card = e.target && e.target.closest ? e.target.closest('.glow-card') : null;
+      if (lastGlowCard && lastGlowCard !== card) lastGlowCard.classList.remove('is-glowing');
+      if (!card) { lastGlowCard = null; return; }
+      var rect = card.getBoundingClientRect();
+      card.style.setProperty('--mx', Math.round(e.clientX - rect.left) + 'px');
+      card.style.setProperty('--my', Math.round(e.clientY - rect.top) + 'px');
+      card.classList.add('is-glowing');
+      lastGlowCard = card;
+    }
+
+    document.addEventListener('pointermove', moveGlow, { passive: true });
+    document.addEventListener('pointerdown', moveGlow, { passive: true });   /* 触屏按下也点亮 */
+
+    /* 手指抬起后熄灭（鼠标靠 pointermove 换目标自然熄灭） */
+    document.addEventListener('pointerup', function (e) {
+      if (e.pointerType !== 'mouse' && lastGlowCard) {
+        lastGlowCard.classList.remove('is-glowing');
+        lastGlowCard = null;
+      }
+    }, { passive: true });
+    document.addEventListener('pointercancel', function () {
+      if (lastGlowCard) { lastGlowCard.classList.remove('is-glowing'); lastGlowCard = null; }
+    }, { passive: true });
+
     function runGenerate() {
       errEl.hidden = true;
 
@@ -1380,6 +1441,7 @@
 
       generateBtn.disabled = true;
       generateBtn.textContent = '分析中…';
+      startRingScan();           /* 🆕 视觉：环形区域旋转扫描光环 */
 
       setTimeout(function () {
         var out = currentMode === 'night'
@@ -1387,6 +1449,7 @@
           : getAdvice(sedentary, sleep, hr, steps);
 
         if (!out) {
+          stopRingScan();
           showError(errEl, '没有匹配到规则，请检查输入。');
         } else {
           var vitality = computeVitality(sedentary, sleep, hr, steps);
@@ -1437,9 +1500,13 @@
           aiReply.textContent = '';
           aiHasReply = false;
 
-          /* 先滑出抽屉，再让环形生长：两段动画错开一点，看起来更顺 */
+          /* 先滑出抽屉，再让环形生长：扫描收掉，进度条带强光充满 */
+          stopRingScan();
           openResultSheet();
-          setTimeout(function () { renderVitality(vitality); }, 160);
+          setTimeout(function () {
+            renderVitality(vitality);
+            flashRing();           /* 🆕 视觉：环形充满瞬间的高光脉冲 */
+          }, 160);
         }
 
         generateBtn.disabled = false;
