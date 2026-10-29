@@ -2463,3 +2463,229 @@ body.sheet-open .app-scroll { overflow: hidden; }
   .ring-scan { display: none !important; }   /* 静止的扫描弧没有意义，直接不显示 */
   .ring-bar.is-flash { animation: none; }
 }
+
+/* ============================================================
+   v23：AI 语音朗读 / 健康成就勋章 / 番茄钟屏幕常亮
+   ============================================================ */
+
+/* ---------- 🔊 AI 语音朗读 ---------- */
+.ai-speak {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 4px;
+  padding: 10px 18px;
+  border: 1px solid rgba(107, 70, 193, 0.26);
+  border-radius: 999px;
+  background: rgba(107, 70, 193, 0.10);
+  color: var(--ai);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.16s ease, background 0.24s ease, box-shadow 0.24s ease;
+}
+
+.ai-speak:active { transform: scale(0.96); }
+.ai-speak[hidden] { display: none; }
+
+/* 朗读中：紫色光晕一圈圈散开，图标跟着“说话”轻微跳动 */
+.ai-speak.is-speaking {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--ai), #8b7bf0);
+  animation: speakPulse 1.6s ease-in-out infinite;
+}
+
+.ai-speak.is-speaking .ai-speak-ico {
+  animation: speakWave 0.9s ease-in-out infinite;
+}
+
+@keyframes speakPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(107, 70, 193, 0.34); }
+  50%      { box-shadow: 0 0 0 9px rgba(107, 70, 193, 0); }
+}
+
+@keyframes speakWave {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.22); }
+}
+
+/* ---------- 🏅 健康成就勋章 ---------- */
+.badge-card {
+  margin: 0 0 16px;
+  padding: 16px;
+  border-radius: 20px;
+}
+
+.badge-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.badge-head h2 {
+  margin: 0;
+  font-size: 16.5px;
+  color: var(--ink);
+}
+
+.badge-count { font-size: 13px; color: var(--muted); }
+
+.badge-count em {
+  font-style: normal;
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--accent);
+}
+
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.badge-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 14px 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--glass-inner);
+  text-align: center;
+  transition: transform 0.2s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.badge-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  font-size: 24px;
+  line-height: 1;
+  background: var(--track);
+  filter: grayscale(1);
+  opacity: 0.55;
+  transition: filter 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease;
+}
+
+.badge-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.badge-cond {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--muted);
+  opacity: 0.85;
+}
+
+.badge-prog {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: var(--muted);
+}
+
+/* 未解锁：整块压暗，图标右下角挂一把小锁 */
+.badge-item.is-locked { opacity: 0.75; }
+
+.badge-item.is-locked .badge-icon::after {
+  content: '🔒';
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  font-size: 11px;
+  opacity: 0.9;
+}
+
+/* 已解锁：渐变描边 + 彩色图标 + 持续微光 */
+.badge-item.is-unlocked {
+  border-color: transparent;
+  background: linear-gradient(160deg, rgba(47, 133, 90, 0.16), rgba(107, 70, 193, 0.13));
+  box-shadow: 0 8px 20px rgba(47, 133, 90, 0.14);
+}
+
+.badge-item.is-unlocked .badge-icon {
+  background: linear-gradient(140deg, #2f855a, #6b46c1);
+  filter: none;
+  opacity: 1;
+  animation: badgeGlow 2.8s ease-in-out infinite;
+}
+
+.badge-item.is-unlocked .badge-name { color: var(--ink); }
+
+.badge-item.is-unlocked .badge-prog { color: var(--accent); }
+
+@keyframes badgeGlow {
+  0%, 100% {
+    box-shadow: 0 6px 14px rgba(107, 70, 193, 0.26), 0 0 0 0 rgba(107, 70, 193, 0.22);
+  }
+  50% {
+    box-shadow: 0 6px 20px rgba(107, 70, 193, 0.40), 0 0 0 7px rgba(107, 70, 193, 0);
+  }
+}
+
+/* 刚刚点亮：弹一下，只播一次 */
+.badge-item.just-unlocked {
+  animation: badgePop 0.62s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes badgePop {
+  0%   { transform: scale(0.86); }
+  60%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+.badge-cap {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ---------- 💡 番茄钟屏幕常亮提示 ---------- */
+.pomo-wake {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  animation: wakeFade 0.5s ease;
+}
+
+.pomo-wake[hidden] { display: none; }
+
+@keyframes wakeFade {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 夜间主题下的勋章卡片：底色再实一点，避免发灰 */
+:root[data-theme="night"] .badge-item.is-unlocked {
+  background: linear-gradient(160deg, rgba(79, 209, 165, 0.16), rgba(139, 123, 240, 0.16));
+}
+
+/* ---------- 无障碍：减少动态效果 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .ai-speak.is-speaking,
+  .ai-speak.is-speaking .ai-speak-ico,
+  .badge-item.is-unlocked .badge-icon,
+  .badge-item.just-unlocked,
+  .pomo-wake { animation: none !important; }
+}

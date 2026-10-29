@@ -12,7 +12,7 @@
       document.documentElement.setAttribute('data-theme', (h >= 6 && h < 18) ? 'day' : 'night');
     })();
   </script>
-  <link rel="stylesheet" href="style.css?v=22">
+  <link rel="stylesheet" href="style.css?v=23">
   <!-- PWA：添加到主屏幕所需 -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2f7d5b">
@@ -133,6 +133,8 @@
               <button type="button" id="pomoReset" class="pomo-btn ghost">重置</button>
             </div>
             <p class="pomo-state" id="pomoState">还没开始 · 计时期间离开页面也会继续</p>
+            <!-- 🆕 屏幕常亮提示：wakeLock 生效时才出现 -->
+            <p class="pomo-wake" id="pomoWake" hidden><span aria-hidden="true">💡</span> 屏幕已保持常亮，到点才提醒得到</p>
           </div>
 
           <footer class="app-footer">
@@ -158,6 +160,16 @@
               <strong id="streakDays">0</strong>
               <span>你已连续关注健康 <em id="streakDaysInline">0</em> 天</span>
             </div>
+          </div>
+
+          <!-- 🆕 健康成就勋章：数据全部来自本地记录，没解锁的置灰 -->
+          <div class="glass glow-card badge-card" id="badgeCard">
+            <div class="badge-head">
+              <h2>🏅 我的成就</h2>
+              <span class="badge-count"><em id="badgeCount">0</em> / 4</span>
+            </div>
+            <div class="badge-grid" id="badgeGrid"></div>
+            <p class="badge-cap">勋章按本地记录自动点亮，不用手动领取。</p>
           </div>
 
           <!-- 🆕 近 7 日活力值趋势：纯 CSS 柱状图，颜色随分数变化 -->
@@ -358,6 +370,10 @@
               <div id="ai-card" class="ai-card" hidden>
                 <p class="ai-title">🤖 AI 私教补充建议</p>
                 <div class="ai-content" id="aiReply" aria-live="polite"></div>
+                <!-- 🆕 语音朗读：纯前端 speechSynthesis，点一次读，再点一次停 -->
+                <button type="button" id="aiSpeakBtn" class="ai-speak" hidden>
+                  <span class="ai-speak-ico" aria-hidden="true">🔊</span><span id="aiSpeakTxt">语音朗读</span>
+                </button>
                 <button type="button" id="aiRetryBtn" class="ai-retry" hidden>↻ 再试一次</button>
                 <form class="ai-ask" id="aiAskForm" autocomplete="off">
                   <input type="text" id="aiQuestion" placeholder="还想追问点什么？例如：晚上能跑步吗" maxlength="120">
@@ -437,6 +453,6 @@
   </div><!-- /phone-shell -->
 
   <script src="html2canvas.min.js" onerror="this.onerror=null;this.src='https://fastly.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'"></script>
-  <script src="script.js?v=22"></script>
+  <script src="script.js?v=23"></script>
 </body>
 </html>

@@ -517,6 +517,13 @@
     var pomodoroOk = document.getElementById('pomodoroOk');
     var aiQuotaEl = document.getElementById('aiQuota');
 
+    /* 🆕 v23：语音朗读 / 成就勋章 / 屏幕常亮 */
+    var aiSpeakBtn = document.getElementById('aiSpeakBtn');
+    var aiSpeakTxt = document.getElementById('aiSpeakTxt');
+    var badgeGrid = document.getElementById('badgeGrid');
+    var badgeCount = document.getElementById('badgeCount');
+    var pomoWake = document.getElementById('pomoWake');
+
     /* 🆕 v21：启动屏 + 环形扫描（纯视觉，不碰任何逻辑） */
     var splashEl = document.getElementById('splash');
     var ringScan = document.getElementById('ringScan');
@@ -677,6 +684,8 @@
     }
 
     function closeAiSheet() {
+      stopSpeak();      /* 🆕 抽屉关了就别再念了（放最前面，任何关闭路径都生效） */
+
       if (!aiOverlay || aiOverlay.hidden || aiTimer) return;
 
       aiOverlay.classList.remove('is-open');
@@ -812,6 +821,7 @@
       try { localStorage.removeItem(CHECKIN_KEY); } catch (e) {}
       renderHistory();
       renderStreak();
+      renderBadges();
       updateLastTestLabel();
       showToast('记录已清空');
     }
@@ -837,6 +847,7 @@
         renderHistory();
         renderStreak();
         renderTrend();
+        renderBadges();
       }
       if (appScroll) appScroll.scrollTop = 0;
     }
@@ -876,8 +887,15 @@
         w.count += 1;
         try { localStorage.setItem(WATER_KEY, JSON.stringify(w)); } catch (e) {}
         renderWater();
+        var justBadges = renderBadges(true);   /* 🆕 第 8 杯刚好点亮「水元素使者」 */
         if (navigator.vibrate) { try { navigator.vibrate(30); } catch (e) {} }
-        if (w.count === WATER_GOAL) showToast('今日喝水目标达成 💧');
+        if (w.count === WATER_GOAL) {
+          showToast(justBadges.length
+            ? '今日喝水目标达成 💧 同时点亮「' + justBadges.join('、') + '」'
+            : '今日喝水目标达成 💧');
+        } else if (justBadges.length) {
+          showToast('🏅 解锁成就：' + justBadges.join('、'));
+        }
       });
     }
 
@@ -1029,6 +1047,84 @@
       if (inline) inline.textContent = n;
     }
 
+    /* ================= 🆕 v23：健康成就勋章 =================
+       全部按本地数据实时判定，不额外存「已解锁」标记：
+       · 连续打卡看「历史最长连续」——断签后勋章也不会又变灰
+       · AI 次数看累计值，跨天不清零
+       · 喝水看今天打卡的杯数 */
+    var BADGES = [
+      { id: 'sprout', icon: '🌱', name: '健康萌芽', cond: '连续打卡 3 天', type: 'streak', need: 3, unit: '天' },
+      { id: 'neck', icon: '🛡️', name: '颈椎守护者', cond: '连续打卡 7 天', type: 'streak', need: 7, unit: '天' },
+      { id: 'cyber', icon: '🤖', name: '赛博病友', cond: '累计咨询 AI 5 次', type: 'ai', need: 5, unit: '次' },
+      { id: 'water', icon: '🌊', name: '水元素使者', cond: '单日喝水满 8 杯', type: 'water', need: 8, unit: '杯' }
+    ];
+
+    var badgePrev = {};   /* 上一次的解锁状态，用来识别「刚刚点亮」 */
+
+    /* 历史最长连续打卡天数（不是当前连续，避免断签后勋章熄灭） */
+    function bestStreakDays() {
+      var arr = loadCheckins().slice().sort();
+      var best = 0;
+      var run = 0;
+      var prev = 0;
+
+      for (var i = 0; i < arr.length; i++) {
+        var p = String(arr[i]).split('-');
+        var t = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10)).getTime();
+        if (!isFinite(t)) continue;
+        run = (prev && Math.round((t - prev) / 86400000) === 1) ? run + 1 : 1;
+        prev = t;
+        if (run > best) best = run;
+      }
+
+      return best;
+    }
+
+    function badgeHaveValue(type) {
+      if (type === 'streak') return bestStreakDays();
+      if (type === 'ai') return aiTotalUses();
+      return getWater().count;
+    }
+
+    function renderBadges(quiet) {
+      if (!badgeGrid) return [];
+
+      var unlockedTotal = 0;
+      var html = '';
+      var justUnlocked = [];
+
+      BADGES.forEach(function (b) {
+        var have = badgeHaveValue(b.type);
+        var unlocked = have >= b.need;
+        if (unlocked) unlockedTotal += 1;
+
+        var justNow = unlocked && badgePrev[b.id] === false;   /* 从暗到亮的那一下 */
+        if (justNow) justUnlocked.push(b.name);
+        badgePrev[b.id] = unlocked;
+
+        var prog = unlocked ? '已点亮' : (Math.min(have, b.need) + ' / ' + b.need + ' ' + b.unit);
+
+        html += '<div class="badge-item ' + (unlocked ? 'is-unlocked' : 'is-locked') +
+          (justNow ? ' just-unlocked' : '') + '" data-badge="' + b.id + '">' +
+          '<span class="badge-icon" aria-hidden="true">' + b.icon + '</span>' +
+          '<span class="badge-name">' + b.name + '</span>' +
+          '<span class="badge-cond">' + b.cond + '</span>' +
+          '<span class="badge-prog">' + prog + '</span>' +
+          '</div>';
+      });
+
+      badgeGrid.innerHTML = html;
+      if (badgeCount) badgeCount.textContent = unlockedTotal;
+
+      /* 刚点亮：即时给一句反馈，用户在首页也能感知到（去记录页能看到发光）。
+         quiet = true 时由调用方自己拼提示，避免两条 toast 打架 */
+      if (justUnlocked.length && !quiet) {
+        showToast('🏅 解锁成就：' + justUnlocked.join('、'));
+      }
+
+      return justUnlocked;
+    }
+
     /* ================= 🆕 久坐番茄钟：50 分钟专注 + 到点提醒 =================
        运行状态存 localStorage：离开页面 / 刷新后计时继续，到点照常提醒 */
     var POMO_TOTAL_MS = 50 * 60 * 1000;
@@ -1112,6 +1208,7 @@
     function pomoFinish() {
       stopPomoTick();
       pomoRunning = false;
+      releaseWake();      /* 🆕 到点结束，把屏幕交给系统 */
       pomoRemaining = POMO_TOTAL_MS;
       setPomoCard('is-done');
       if (pomoBtn) pomoBtn.textContent = '再来一轮';
@@ -1123,6 +1220,64 @@
       pomoBeep();
       openPomodoro();
     }
+
+    /* ================= 🆕 v23：屏幕常亮（Wake Lock API） =================
+       番茄钟一开就申请锁屏常亮，到点提醒才听得见；
+       暂停 / 重置 / 结束立刻释放。只在 https 或 localhost 生效，
+       浏览器不支持或被系统拒绝时静默跳过，完全不影响计时本身。 */
+    var wakeLock = null;
+
+    function wakeSupported() {
+      return typeof navigator !== 'undefined' && 'wakeLock' in navigator;
+    }
+
+    function updateWakeTip() {
+      if (!pomoWake) return;
+      pomoWake.hidden = !(wakeLock && !wakeLock.released);
+    }
+
+    function requestWake() {
+      if (!wakeSupported()) return;
+      if (wakeLock && !wakeLock.released) { updateWakeTip(); return; }
+
+      try {
+        navigator.wakeLock.request('screen').then(function (lock) {
+          wakeLock = lock;
+          updateWakeTip();
+          /* 系统主动回收（切后台、低电量、省电模式）时同步状态，
+             回到前台会自动重新申请 */
+          if (lock.addEventListener) {
+            lock.addEventListener('release', function () {
+              if (wakeLock === lock) wakeLock = null;
+              updateWakeTip();
+            });
+          }
+        }).catch(function () {
+          wakeLock = null;     /* 被拒绝也不能影响倒计时 */
+          updateWakeTip();
+        });
+      } catch (e) {
+        wakeLock = null;
+        updateWakeTip();
+      }
+    }
+
+    function releaseWake() {
+      var lock = wakeLock;
+      wakeLock = null;
+      if (lock) {
+        try {
+          var p = lock.release();
+          if (p && p.catch) p.catch(function () {});
+        } catch (e) {}
+      }
+      updateWakeTip();
+    }
+
+    /* 切回前台且番茄钟还在跑：把锁补回来 */
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible' && pomoRunning) requestWake();
+    });
 
     function startPomo() {
       pomoRunning = true;
@@ -1137,12 +1292,14 @@
       }, 250);
       renderPomo();
       savePomoState();
+      requestWake();      /* 🆕 开始专注就锁住屏幕常亮 */
     }
 
     function pausePomo() {
       pomoRunning = false;
       pomoRemaining = Math.max(0, pomoEndAt - Date.now());
       stopPomoTick();
+      releaseWake();      /* 🆕 暂停就不再占用常亮 */
       setPomoCard(null);
       if (pomoBtn) pomoBtn.textContent = '继续专注';
       if (pomoState) pomoState.textContent = '已暂停 · 随时可以继续';
@@ -1154,6 +1311,7 @@
       pomoRunning = false;
       pomoRemaining = POMO_TOTAL_MS;
       stopPomoTick();
+      releaseWake();      /* 🆕 重置就释放 */
       setPomoCard(null);
       if (pomoBtn) pomoBtn.textContent = '开始专注';
       if (pomoState) pomoState.textContent = '还没开始 · 计时期间离开页面也会继续';
@@ -1190,6 +1348,7 @@
           renderPomo();
         }, 250);
         renderPomo();
+        requestWake();      /* 🆕 刷新后恢复运行中的番茄钟，常亮也要补上 */
       } else if (st.running && st.endAt <= Date.now()) {
         /* 页面关着的时候时间就到了：不再打扰，呈现完成态 */
         pomoRunning = false;
@@ -1495,12 +1654,15 @@
           saveTrendDay(record);      /* 🆕 同步写进「每日趋势日志」，喂给 AI 长记忆 */
           updateLastTestLabel();
           addCheckin();              /* 🆕 记一笔当天打卡（供「记录」页算连续天数） */
+          renderBadges();            /* 🆕 打卡可能推进/点亮连续天数徽章 */
           updateGoalTip(steps, sedentary);   /* 🆕 对照个人目标给鼓励提示 */
 
           /* 新结果出来，旧 AI 建议作废，下次点入口会重新问一次 */
           aiCard.hidden = true;
           aiReply.textContent = '';
           aiHasReply = false;
+          stopSpeak();                                            /* 🆕 新结果，旧朗读作废 */
+          if (aiSpeakBtn) aiSpeakBtn.hidden = true;
 
           /* 先滑出抽屉，再让环形生长：扫描收掉，进度条带强光充满 */
           stopRingScan();
@@ -1543,6 +1705,16 @@
        计次规则：主回答「成功拿到回复」才 +1；失败重试与追问不额外扣次数 */
     var AI_DAILY_LIMIT = 3;
     var AI_QUOTA_KEY = 'shiftHealthAiQuota';
+    var AI_TOTAL_KEY = 'shiftHealthAiTotal';   /* 🆕 累计使用次数（成就用，不清零） */
+
+    function aiTotalUses() {
+      var n = parseInt(localStorage.getItem(AI_TOTAL_KEY) || '0', 10);
+      return isFinite(n) && n > 0 ? n : 0;
+    }
+
+    function bumpAiTotal() {
+      try { localStorage.setItem(AI_TOTAL_KEY, String(aiTotalUses() + 1)); } catch (e) {}
+    }
 
     function getAiQuota() {
       var today = dayStamp(new Date());
@@ -1556,6 +1728,7 @@
       var q = getAiQuota();
       q.used += 1;
       try { localStorage.setItem(AI_QUOTA_KEY, JSON.stringify(q)); } catch (e) {}
+      bumpAiTotal();      /* 🆕 累计次数单独记，跨天也不清零 */
     }
 
     function aiQuotaLeft() {
@@ -1583,6 +1756,89 @@
       aiBtn.textContent = busy ? AI_BTN_LOADING : AI_BTN_TEXT;
     }
 
+    /* ================= 🆕 v23：AI 语音朗读（Web Speech API，纯前端免费） =================
+       点一次开始读，再点一次立刻停；换了新回复、关抽屉、重新提问都会自动停，
+       不会出现「页面关了声音还在念」的尴尬 */
+    var SPEAK_OFF_TEXT = '语音朗读';
+    var SPEAK_ON_TEXT = '停止朗读';
+    var speaking = false;
+
+    function speechSupported() {
+      return typeof window !== 'undefined' &&
+        'speechSynthesis' in window &&
+        typeof window.SpeechSynthesisUtterance === 'function';
+    }
+
+    /* 优先挑中文音色，挑不到就用系统默认（不影响使用） */
+    function pickZhVoice() {
+      var list = [];
+      try { list = window.speechSynthesis.getVoices() || []; } catch (e) { return null; }
+      var fallback = null;
+      for (var i = 0; i < list.length; i++) {
+        var lang = String(list[i].lang || '').toLowerCase();
+        if (lang.indexOf('zh-cn') === 0 || lang.indexOf('zh_cn') === 0) return list[i];
+        if (!fallback && lang.indexOf('zh') === 0) fallback = list[i];
+      }
+      return fallback;
+    }
+
+    function setSpeakUi(on) {
+      speaking = !!on;
+      if (!aiSpeakBtn) return;
+      aiSpeakBtn.classList.toggle('is-speaking', !!on);
+      aiSpeakBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      if (aiSpeakTxt) aiSpeakTxt.textContent = on ? SPEAK_ON_TEXT : SPEAK_OFF_TEXT;
+    }
+
+    function stopSpeak() {
+      if (speaking && speechSupported()) {
+        try { window.speechSynthesis.cancel(); } catch (e) {}
+      }
+      setSpeakUi(false);
+    }
+
+    function speakAiReply() {
+      if (!speechSupported()) {
+        showToast('这个浏览器不支持语音朗读，换个浏览器试试');
+        return;
+      }
+      /* 正在读：再点一次就是停止 */
+      if (speaking) { stopSpeak(); return; }
+
+      var text = String(aiReply.textContent || '').trim();
+      if (!text) {
+        showToast('还没有可以朗读的内容');
+        return;
+      }
+
+      try { window.speechSynthesis.cancel(); } catch (e) {}   /* 清掉可能排队的旧任务 */
+
+      var utt = new window.SpeechSynthesisUtterance(text);
+      utt.lang = 'zh-CN';
+      utt.rate = 1.0;      /* 正常语速，太快听不清 */
+      utt.pitch = 1.0;
+      utt.volume = 1;
+      var voice = pickZhVoice();
+      if (voice) utt.voice = voice;
+
+      utt.onend = function () { setSpeakUi(false); };
+      utt.onerror = function () { setSpeakUi(false); };
+
+      setSpeakUi(true);
+      try {
+        window.speechSynthesis.speak(utt);
+      } catch (e) {
+        setSpeakUi(false);
+        showToast('朗读启动失败，稍后再试');
+      }
+    }
+
+    if (aiSpeakBtn) {
+      aiSpeakBtn.addEventListener('click', speakAiReply);
+      /* 有的浏览器不支持就别显示这个按钮，免得点了没反应 */
+      if (!speechSupported()) aiSpeakBtn.hidden = true;
+    }
+
     function askCoach(payload, waitingText) {
       lastAiPayload = payload;
       lastAiWaiting = waitingText || '';
@@ -1590,6 +1846,8 @@
       setAiBusy(true);
       aiCard.hidden = false;
       aiRetryBtn.hidden = true;
+      stopSpeak();                       /* 🆕 重新问就别再念旧的了 */
+      if (aiSpeakBtn) aiSpeakBtn.hidden = true;
       aiReply.textContent = waitingText || '教练正在翻你这几天的档案…';
 
       var startedAt = Date.now();
@@ -1633,6 +1891,9 @@
         aiRetryBtn.hidden = true;
         aiHasReply = true;
         consumeAiQuota();          /* 🆕 拿到完整回复才算消耗一次 */
+        /* 🆕 文字齐了才把朗读按钮放出来，避免读到半截 */
+        if (aiSpeakBtn && speechSupported()) aiSpeakBtn.hidden = false;
+        renderBadges();            /* 🆕 第 5 次咨询可能刚好点亮「赛博病友」 */
       }
 
       return fetch(AI_ENDPOINT, {
@@ -2119,6 +2380,10 @@
     /* 🆕 初始化喝水打卡与目标输入框 */
     renderWater();
     renderGoalInputs();
+
+    /* 🆕 v23：成就勋章首次渲染 + 屏幕常亮状态 */
+    renderBadges();
+    updateWakeTip();
 
     /* ================= 🆕 PWA：注册 Service Worker =================
        仅在 https 或 localhost 下生效；file:// 双击打开时自动跳过 */
