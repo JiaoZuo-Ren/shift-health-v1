@@ -12,7 +12,7 @@
       document.documentElement.setAttribute('data-theme', (h >= 6 && h < 18) ? 'day' : 'night');
     })();
   </script>
-  <link rel="stylesheet" href="style.css?v=19">
+  <link rel="stylesheet" href="style.css?v=20">
   <!-- PWA：添加到主屏幕所需 -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2f7d5b">
@@ -70,6 +70,16 @@
             <span class="quote-refresh" id="quoteRefresh" title="换一句" role="button" tabindex="0" aria-label="换一句金句">↻</span>
           </div>
 
+          <!-- 🆕 喝水打卡：一杯一记，localStorage 记录，跨天自动清零 -->
+          <div class="glass water-card" id="waterCard" aria-label="喝水打卡">
+            <span class="water-ico" aria-hidden="true">💧</span>
+            <div class="water-txt">
+              <strong>今日饮水：<em id="waterCount">0</em> / 8 杯</strong>
+              <span id="waterHint">每喝一杯点一下，跨天自动清零</span>
+            </div>
+            <button type="button" id="waterBtn" class="water-drop" aria-label="喝了一杯，记一杯">＋</button>
+          </div>
+
           <!-- 输入表单：结果全部放进底部抽屉 -->
           <section class="glass form-card" aria-label="输入数据">
             <div class="field" id="fieldSedentary">
@@ -95,6 +105,11 @@
             <button type="button" id="generateBtn" class="primary-btn">生成今天的建议</button>
             <p id="formError" class="form-error" role="alert" hidden></p>
           </section>
+
+          <!-- 🆕 呼吸放松入口：不用先出结果，首页随时可以放松 60 秒 -->
+          <button type="button" id="homeBreatheBtn" class="breathe-entry">
+            <span aria-hidden="true">🧘</span> 60 秒呼吸放松
+          </button>
 
           <!-- 🆕 久坐番茄钟：50 分钟专注计时，到点提醒起来活动 -->
           <div class="glass pomo-card" id="pomoCard">
@@ -138,6 +153,13 @@
             </div>
           </div>
 
+          <!-- 🆕 近 7 日活力值趋势：纯 CSS 柱状图，颜色随分数变化 -->
+          <div class="glass trend-card">
+            <h2>📈 近 7 日活力值趋势</h2>
+            <div class="trend-bars" id="trendBars" role="img" aria-label="最近 7 天活力值柱状图"></div>
+            <p class="trend-cap">每天取最后一次记录 · 柱子越高状态越好 · 没记录的天置灰</p>
+          </div>
+
           <div id="historyList" class="history-list"></div>
 
           <div class="history-foot">
@@ -159,6 +181,31 @@
             <p>你好，我是一名大四学生。做这个小工具的起点很简单：我自己常年久坐写代码，作息一乱，白天整个人都是懵的。网上能查到的健康知识又多又杂，看完更不知道"今天到底该干嘛"。</p>
             <p>所以我想把那些复杂的指标翻译成一句人话：今天该动还是该歇。所有建议都来自一张写死的规则表，不猜、不编、不吓唬人，也没有广告和追踪。</p>
             <p>这是我毕业前做的第一个完整的产品。如果你用着觉得有一点点用，就是对我最大的鼓励。</p>
+          </div>
+
+          <!-- 🆕 每日目标设置：保存到 localStorage，生成建议时给鼓励提示 -->
+          <div class="glass me-card goal-card">
+            <h2>⚙️ 每日目标设置</h2>
+            <div class="goal-row">
+              <label for="goalSteps">每日步数目标（步）</label>
+              <input type="number" id="goalSteps" inputmode="numeric" min="1000" max="50000" step="500" placeholder="默认 6000">
+            </div>
+            <div class="goal-row">
+              <label for="goalSedentary">久坐上限（小时）</label>
+              <input type="number" id="goalSedentary" inputmode="decimal" min="1" max="16" step="0.5" placeholder="默认 6">
+            </div>
+            <button type="button" id="saveGoalsBtn" class="pomo-btn">保存目标</button>
+            <p class="goal-cap">保存后，生成建议时会对照目标给你鼓励提示。</p>
+          </div>
+
+          <!-- 🆕 睡眠周期小科普：折叠文本，默认收起 -->
+          <div class="glass me-card edu-card">
+            <details>
+              <summary>📖 关于健康周期：为什么睡够 7 小时还不够？</summary>
+              <p>人的睡眠不是匀速的，而是以约 90 分钟为一个周期循环：浅睡 → 深睡 → 快速眼动（REM）。深睡负责修复身体，REM 负责整理情绪和记忆。</p>
+              <p>一晚理想状态会经历 4–5 个周期，所以 6–7.5 小时是大多数成年人的合理区间。醒在深睡阶段会格外昏沉（也就是「睡不醒」的元凶），醒在浅睡或 REM 结束时反而神清气爽——这就是为什么有时候睡得久不如睡得巧。</p>
+              <p>一个小技巧：与其纠结「几点睡」，不如固定「几点起」，让身体按 90 分钟的节奏倒推入睡时间，连续一两周，白天困倦感会明显减轻。</p>
+            </details>
           </div>
 
           <div class="glass me-card">
@@ -237,6 +284,9 @@
               <p class="panel-text" id="activityAdvice"></p>
               <p class="taboo" id="tabooAdvice"></p>
             </div>
+
+            <!-- 🆕 目标提示：未达到个人目标时的鼓励语 -->
+            <div class="goal-tip" id="goalTip" hidden></div>
 
             <!-- 模块二：运动与拉伸处方 -->
             <div class="panel">
@@ -376,6 +426,6 @@
   </div><!-- /phone-shell -->
 
   <script src="html2canvas.min.js" onerror="this.onerror=null;this.src='https://fastly.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'"></script>
-  <script src="script.js?v=19"></script>
+  <script src="script.js?v=20"></script>
 </body>
 </html>

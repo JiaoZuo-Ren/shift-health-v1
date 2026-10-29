@@ -2028,3 +2028,238 @@ body.sheet-open .app-scroll { overflow: hidden; }
   .app-header h1 { font-size: 25px; }
   .pomo-time { font-size: 42px; }
 }
+
+/* ============================================================
+   v20 追加段：喝水打卡 / 呼吸入口 / 趋势图 / 目标设置 / 科普折叠
+   ============================================================ */
+
+/* ---------- 🆕 喝水打卡 ---------- */
+.water-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 13px 14px;
+  border-radius: 18px;
+}
+
+.water-ico { font-size: 26px; line-height: 1; flex: 0 0 auto; }
+
+.water-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.water-txt strong {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.water-txt em {
+  font-style: normal;
+  font-weight: 800;
+  color: #2b6cb0;   /* 水滴蓝 */
+}
+
+.water-txt span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.water-drop {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  border: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4a90d9, #2b6cb0);
+  color: #fff;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(43, 108, 176, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.water-drop:active {
+  transform: scale(0.88);
+  box-shadow: 0 3px 8px rgba(43, 108, 176, 0.3);
+}
+
+/* ---------- 🆕 首页呼吸放松入口 ---------- */
+.breathe-entry {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin: 14px 0 2px;
+  padding: 13px;
+  border-radius: 16px;
+  border: 1px solid rgba(47, 133, 90, 0.4);
+  background: linear-gradient(135deg, rgba(47, 133, 90, 0.14), rgba(47, 133, 90, 0.04));
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.22s ease;
+}
+
+.breathe-entry:active {
+  transform: scale(0.97);
+  box-shadow: 0 4px 14px rgba(47, 133, 90, 0.2);
+}
+
+/* ---------- 🆕 近 7 日活力值趋势（纯 CSS 柱状图） ---------- */
+.trend-card {
+  margin: 0 0 16px;
+  padding: 16px;
+  border-radius: 20px;
+}
+
+.trend-card h2 {
+  margin: 0 0 14px;
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.trend-bars {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  height: 150px;
+}
+
+.trend-col {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.trend-score {
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.trend-bar {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 34px;
+  display: flex;
+  align-items: flex-end;
+  border-radius: 8px;
+  background: var(--ring-track);
+  overflow: hidden;
+}
+
+.trend-fill {
+  display: block;
+  width: 100%;
+  border-radius: 8px 8px 0 0;
+  transition: height 0.6s cubic-bezier(0.22, 0.85, 0.25, 1);
+}
+
+/* 颜色随分数变化：红 / 黄 / 绿，没记录置灰 */
+.trend-fill.t-low  { background: linear-gradient(180deg, #e05c50, #c04a3f); }
+.trend-fill.t-mid  { background: linear-gradient(180deg, #e0a53f, #c98d2c); }
+.trend-fill.t-high { background: linear-gradient(180deg, #3fae76, #2f7d5b); }
+.trend-fill.t-none { background: var(--muted); opacity: 0.35; }
+
+.trend-day {
+  font-size: 10.5px;
+  color: var(--muted);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.trend-cap {
+  margin: 12px 0 0;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+/* ---------- 🆕 我的页：目标设置 ---------- */
+.goal-card .goal-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+
+.goal-card .goal-row label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.goal-card .goal-row input {
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-inner);
+  color: var(--ink);
+  font-family: inherit;
+}
+
+.goal-card .pomo-btn { width: 100%; margin-top: 2px; }
+
+.goal-cap {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ---------- 🆕 我的页：健康周期折叠科普 ---------- */
+.edu-card details summary {
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  list-style: none;
+  user-select: none;
+}
+
+.edu-card details summary::-webkit-details-marker { display: none; }
+
+/* 折叠箭头：收起朝右，展开朝下 */
+.edu-card details summary::before {
+  content: '▸';
+  display: inline-block;
+  margin-right: 6px;
+  color: var(--accent);
+  transition: transform 0.2s ease;
+}
+
+.edu-card details[open] summary::before { transform: rotate(90deg); }
+
+.edu-card details p {
+  margin: 10px 0 0;
+  font-size: 13.5px;
+  line-height: 1.85;
+  color: var(--muted);
+}
+
+/* ---------- 🆕 结果抽屉里的目标提示 ---------- */
+.goal-tip {
+  margin: 0 0 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(47, 133, 90, 0.35);
+  background: linear-gradient(135deg, rgba(47, 133, 90, 0.12), rgba(47, 133, 90, 0.03));
+  font-size: 13.5px;
+  line-height: 1.8;
+  color: var(--ink);
+}

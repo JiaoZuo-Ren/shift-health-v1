@@ -516,6 +516,17 @@
     var pomodoroOverlay = document.getElementById('pomodoroOverlay');
     var pomodoroOk = document.getElementById('pomodoroOk');
     var aiQuotaEl = document.getElementById('aiQuota');
+
+    /* 🆕 v20：喝水打卡 / 首页呼吸入口 / 趋势图 / 目标设置 */
+    var waterCount = document.getElementById('waterCount');
+    var waterBtn = document.getElementById('waterBtn');
+    var waterHint = document.getElementById('waterHint');
+    var homeBreatheBtn = document.getElementById('homeBreatheBtn');
+    var trendBars = document.getElementById('trendBars');
+    var goalStepsInput = document.getElementById('goalSteps');
+    var goalSedentaryInput = document.getElementById('goalSedentary');
+    var saveGoalsBtn = document.getElementById('saveGoalsBtn');
+    var goalTip = document.getElementById('goalTip');
     var ringEmoji = document.getElementById('ringEmoji');
     var breatheBtn = document.getElementById('breatheBtn');
     var breatheOverlay = document.getElementById('breatheOverlay');
@@ -821,6 +832,7 @@
       if (name === 'history') {
         renderHistory();
         renderStreak();
+        renderTrend();
       }
       if (appScroll) appScroll.scrollTop = 0;
     }
@@ -829,6 +841,143 @@
       tabbar.addEventListener('click', function (e) {
         var btn = e.target.closest ? e.target.closest('.tab-btn') : null;
         if (btn) switchTab(btn.getAttribute('data-tab'));
+      });
+    }
+
+    /* ================= 🆕 喝水打卡：一杯一记，跨天自动清零 ================= */
+    var WATER_KEY = 'shiftHealthWater';
+    var WATER_GOAL = 8;
+
+    function getWater() {
+      var today = dayStamp(new Date());
+      var w = null;
+      try { w = JSON.parse(localStorage.getItem(WATER_KEY) || 'null'); } catch (e) {}
+      if (!w || w.date !== today) w = { date: today, count: 0 };
+      return w;
+    }
+
+    function renderWater() {
+      var w = getWater();
+      if (waterCount) waterCount.textContent = w.count;
+      if (waterHint) {
+        waterHint.textContent = w.count >= WATER_GOAL
+          ? '今日目标已达成，很棒！继续保持 💧'
+          : '再喝 ' + (WATER_GOAL - w.count) + ' 杯就达标啦';
+      }
+    }
+
+    if (waterBtn) {
+      waterBtn.addEventListener('click', function () {
+        var w = getWater();
+        w.count += 1;
+        try { localStorage.setItem(WATER_KEY, JSON.stringify(w)); } catch (e) {}
+        renderWater();
+        if (navigator.vibrate) { try { navigator.vibrate(30); } catch (e) {} }
+        if (w.count === WATER_GOAL) showToast('今日喝水目标达成 💧');
+      });
+    }
+
+    /* ================= 🆕 每日目标设置：步数目标 + 久坐上限 ================= */
+    var GOALS_KEY = 'shiftHealthGoals';
+    var DEFAULT_GOALS = { steps: 6000, sedentary: 6 };
+
+    function loadGoals() {
+      try {
+        var g = JSON.parse(localStorage.getItem(GOALS_KEY) || 'null');
+        if (g && g.steps > 0 && g.sedentary > 0) return g;
+      } catch (e) {}
+      return { steps: DEFAULT_GOALS.steps, sedentary: DEFAULT_GOALS.sedentary };
+    }
+
+    function renderGoalInputs() {
+      var g = loadGoals();
+      if (goalStepsInput && goalStepsInput.value === '') goalStepsInput.value = g.steps;
+      if (goalSedentaryInput && goalSedentaryInput.value === '') goalSedentaryInput.value = g.sedentary;
+    }
+
+    if (saveGoalsBtn) {
+      saveGoalsBtn.addEventListener('click', function () {
+        var sSteps = parseInt(goalStepsInput.value, 10);
+        var sH = parseFloat(goalSedentaryInput.value);
+        if (isNaN(sSteps) || sSteps < 1000 || sSteps > 50000) { showToast('步数目标请在 1000–50000 之间'); return; }
+        if (isNaN(sH) || sH < 1 || sH > 16) { showToast('久坐上限请在 1–16 小时之间'); return; }
+        try { localStorage.setItem(GOALS_KEY, JSON.stringify({ steps: sSteps, sedentary: sH })); } catch (e) {}
+        showToast('目标已保存，生成建议时生效');
+      });
+    }
+
+    /* 生成建议后对照目标给鼓励提示：只有未达标才显示 */
+    function updateGoalTip(stepsVal, sedentaryVal) {
+      if (!goalTip) return;
+      var g = loadGoals();
+      var tips = [];
+      if (stepsVal !== null && stepsVal !== undefined && stepsVal !== '' && stepsVal < g.steps) {
+        tips.push('🎯 昨天走了 ' + stepsVal + ' 步，离你 ' + g.steps + ' 步的小目标还差 ' + (g.steps - stepsVal) + ' 步——今天多遛个弯就补上了。');
+      }
+      if (sedentaryVal !== null && sedentaryVal !== undefined && sedentaryVal !== '' && sedentaryVal > g.sedentary) {
+        tips.push('🪑 昨天坐了 ' + sedentaryVal + ' 小时，超出了你定的 ' + g.sedentary + ' 小时上限，今天每 50 分钟记得起来晃一晃。');
+      }
+      if (tips.length) {
+        goalTip.textContent = tips.join(' ');
+        goalTip.hidden = false;
+      } else {
+        goalTip.hidden = true;
+      }
+    }
+
+    /* ================= 🆕 近 7 日活力值趋势：纯 CSS 柱状图 ================= */
+    function renderTrend() {
+      if (!trendBars) return;
+      var arr = loadHistory();
+      trendBars.innerHTML = '';
+
+      /* 按天聚合：每天取最后一次记录的活力分 */
+      var byDay = {};
+      arr.forEach(function (rec) {
+        var d = dayStamp(new Date(rec.ts));
+        if (!byDay[d] || rec.ts > byDay[d].ts) byDay[d] = rec;
+      });
+
+      /* 从 6 天前到今天，共 7 天 */
+      var days = [];
+      for (var i = 6; i >= 0; i--) {
+        var dt = new Date();
+        dt.setDate(dt.getDate() - i);
+        days.push(dayStamp(dt));
+      }
+
+      days.forEach(function (d) {
+        var rec = byDay[d];
+        var col = document.createElement('div');
+        col.className = 'trend-col';
+
+        var score = document.createElement('span');
+        score.className = 'trend-score';
+        score.textContent = rec ? rec.vitality : '–';
+
+        var barWrap = document.createElement('div');
+        barWrap.className = 'trend-bar';
+        var fill = document.createElement('span');
+        if (rec) {
+          fill.className = 'trend-fill ' + (rec.vitality < 60 ? 't-low' : (rec.vitality <= 80 ? 't-mid' : 't-high'));
+          fill.style.height = Math.max(8, rec.vitality) + '%';
+          barWrap.title = d + '：活力值 ' + rec.vitality;
+        } else {
+          fill.className = 'trend-fill t-none';
+          fill.style.height = '5%';
+          barWrap.title = d + '：没有记录';
+        }
+        barWrap.appendChild(fill);
+
+        var label = document.createElement('span');
+        label.className = 'trend-day';
+        var pd = d.split('-');
+        label.textContent = parseInt(pd[1], 10) + '/' + parseInt(pd[2], 10);
+
+        col.appendChild(score);
+        col.appendChild(barWrap);
+        col.appendChild(label);
+        trendBars.appendChild(col);
       });
     }
 
@@ -1103,6 +1252,7 @@
     }
 
     breatheBtn.addEventListener('click', openBreathe);
+    if (homeBreatheBtn) homeBreatheBtn.addEventListener('click', openBreathe);
     breatheClose.addEventListener('click', stopBreathe);
     breatheOverlay.addEventListener('click', function (e) {
       if (e.target === breatheOverlay) stopBreathe();   /* 点空白处也能退出 */
@@ -1280,6 +1430,7 @@
           });
           updateLastTestLabel();
           addCheckin();              /* 🆕 记一笔当天打卡（供「记录」页算连续天数） */
+          updateGoalTip(steps, sedentary);   /* 🆕 对照个人目标给鼓励提示 */
 
           /* 新结果出来，旧 AI 建议作废，下次点入口会重新问一次 */
           aiCard.hidden = true;
@@ -1705,6 +1856,10 @@
 
     /* 🆕 初始化 AI 剩余次数显示 */
     updateAiQuotaUi();
+
+    /* 🆕 初始化喝水打卡与目标输入框 */
+    renderWater();
+    renderGoalInputs();
 
     /* ================= 🆕 PWA：注册 Service Worker =================
        仅在 https 或 localhost 下生效；file:// 双击打开时自动跳过 */
