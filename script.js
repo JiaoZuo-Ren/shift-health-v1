@@ -502,6 +502,15 @@
     var historyModal = document.getElementById('historyModal');
     var historyList = document.getElementById('historyList');
     var lastTestEl = document.getElementById('lastTest');
+    var ringEmoji = document.getElementById('ringEmoji');
+    var breatheBtn = document.getElementById('breatheBtn');
+    var breatheOverlay = document.getElementById('breatheOverlay');
+    var breatheBall = document.getElementById('breatheBall');
+    var breathePhase = document.getElementById('breathePhase');
+    var breatheTime = document.getElementById('breatheTime');
+    var breatheClose = document.getElementById('breatheClose');
+    var fortuneBtn = document.getElementById('fortuneBtn');
+    var fortuneText = document.getElementById('fortuneText');
 
     var currentMode = 'day';
     var lastOut = null;
@@ -548,6 +557,27 @@
       if (pct < 60) ringTip.textContent = '恢复不足：今天优先休息，别加练';
       else if (pct <= 80) ringTip.textContent = '还有提升空间：补觉、补步数都算加分';
       else ringTip.textContent = '状态不错：保持今天的节奏就好';
+
+      /* 情绪小精灵：分数决定表情和动画，重复生成时重播一次 */
+      var mood;
+      if (pct < 60) mood = { icon: '🪫', cls: 'emoji-low' };
+      else if (pct <= 80) mood = { icon: '🔋', cls: 'emoji-mid' };
+      else mood = { icon: '🚀', cls: 'emoji-high' };
+
+      ringEmoji.textContent = mood.icon;
+      ringEmoji.className = 'ring-emoji ' + mood.cls;
+      ringEmoji.style.animation = 'none';
+      void ringEmoji.offsetWidth;   /* 强制重排，让同分数重复生成也能重新播动画 */
+      ringEmoji.style.animation = '';
+    }
+
+    /* --- 手机震动反馈：红灯提醒休息，绿灯轻快两下，黄灯不打扰 --- */
+    function haptic(level) {
+      if (!navigator.vibrate) return;   /* iOS Safari 不支持，静默跳过 */
+      try {
+        if (level === 'red') navigator.vibrate(200);
+        else if (level === 'green') navigator.vibrate([100, 50, 100]);
+      } catch (e) { /* 部分浏览器在无用户手势时抛错，忽略 */ }
     }
 
     /* --- 历史记录渲染 --- */
@@ -654,10 +684,115 @@
       showToast('历史记录已清空');
     });
 
-    /* ESC 关闭弹窗/分享预览 */
+    /* ================= 情绪价值：60 秒深呼吸 ================= */
+    var BREATHE_TOTAL_MS = 60000;   /* 总共 60 秒 */
+    var BREATHE_CYCLE_MS = 12000;   /* 一轮 = 吸 4s + 憋 4s + 呼 4s */
+    var breatheTick = null;
+    var breatheStartAt = 0;
+
+    /* 与 CSS 的 breatheCycle 关键帧一一对应 */
+    function breathePhaseOf(elapsed) {
+      var t = elapsed % BREATHE_CYCLE_MS;
+      if (t < 4000) return '吸气';
+      if (t < 8000) return '憋气';
+      return '呼气';
+    }
+
+    function stopBreathe() {
+      if (breatheTick) { clearInterval(breatheTick); breatheTick = null; }
+      breatheOverlay.classList.remove('is-open');
+      breatheOverlay.setAttribute('aria-hidden', 'true');
+      /* 等淡出动画走完再隐藏，否则会被 hidden 直接掐断 */
+      setTimeout(function () {
+        if (!breatheOverlay.classList.contains('is-open')) breatheOverlay.hidden = true;
+      }, 420);
+    }
+
+    function openBreathe() {
+      if (breatheTick) { clearInterval(breatheTick); breatheTick = null; }
+
+      breatheOverlay.hidden = false;
+      breatheOverlay.setAttribute('aria-hidden', 'false');
+      breathePhase.textContent = '吸气';
+      breatheTime.textContent = '还剩 ' + Math.round(BREATHE_TOTAL_MS / 1000) + ' 秒';
+
+      /* 下一帧再加 is-open，保证 opacity 淡入生效 */
+      requestAnimationFrame(function () {
+        if (!breatheOverlay.hidden) breatheOverlay.classList.add('is-open');
+      });
+
+      breatheStartAt = Date.now();
+      breatheTick = setInterval(function () {
+        var elapsed = Date.now() - breatheStartAt;
+        var left = Math.max(0, Math.ceil((BREATHE_TOTAL_MS - elapsed) / 1000));
+        breathePhase.textContent = breathePhaseOf(elapsed);
+        breatheTime.textContent = left > 0 ? '还剩 ' + left + ' 秒' : '完成了，感觉好些了吗？';
+        if (elapsed >= BREATHE_TOTAL_MS) stopBreathe();   /* 60 秒到点自动关闭 */
+      }, 200);
+    }
+
+    breatheBtn.addEventListener('click', openBreathe);
+    breatheClose.addEventListener('click', stopBreathe);
+    breatheOverlay.addEventListener('click', function (e) {
+      if (e.target === breatheOverlay) stopBreathe();   /* 点空白处也能退出 */
+    });
+
+    /* ================= 情绪彩蛋：每日能量签（纯本地数组，不烧 token） ================= */
+    var FORTUNES = [
+      '今天不练，是为了明天更强。身体也需要收利息。',
+      '好好睡觉，是你对这个世界最温柔的反抗。',
+      '别把放松当偷懒，恢复本身就是训练的一部分。',
+      '你不需要每天都满分，及格就够了。',
+      '起来走两分钟，比在椅子上纠结半小时有用。',
+      '心跳快不是你的错，先呼吸，再决定。',
+      '今天的步数不用赢过谁，赢过昨天的自己就行。',
+      '水杯放在手边，比在心里提醒自己八遍都管用。',
+      '疲惫不是意志力问题，是身体在提需求。',
+      '最好的补剂是睡眠，最贵的药是熬夜。',
+      '坐久了起来一次，比下班硬撑着去健身房更值。',
+      '今天先做一件小事：把背挺直，把气吸满。',
+      '状态差的时候，只做最低限度的那件事就好。',
+      '别用咖啡还睡眠的债，利率太高了。',
+      '你已经比昨天的你，多懂了一点身体的规则。',
+      '散步不是浪费时间，是把时间还给自己。',
+      '心里的结，常常几次深呼吸就能松一点。',
+      '运动不用等状态好，状态是做出来的。',
+      '把屏幕放低一点，把下巴收回来，肩膀就松了。',
+      '今天没做到的，明天还在，真的不用焦虑。'
+    ];
+
+    var fortuneTimer = null;
+    var lastFortune = -1;
+
+    /* 打字机效果：逐字吐出来，打完收起光标 */
+    function typeFortune(text) {
+      if (fortuneTimer) { clearInterval(fortuneTimer); fortuneTimer = null; }
+      fortuneText.textContent = '';
+      fortuneText.classList.add('typing');
+      var i = 0;
+      fortuneTimer = setInterval(function () {
+        i += 1;
+        fortuneText.textContent = text.slice(0, i);
+        if (i >= text.length) {
+          clearInterval(fortuneTimer);
+          fortuneTimer = null;
+          fortuneText.classList.remove('typing');
+        }
+      }, 55);
+    }
+
+    fortuneBtn.addEventListener('click', function () {
+      var idx = Math.floor(Math.random() * FORTUNES.length);
+      if (FORTUNES.length > 1 && idx === lastFortune) idx = (idx + 1) % FORTUNES.length;   /* 不连着给同一句 */
+      lastFortune = idx;
+      typeFortune(FORTUNES[idx]);
+    });
+
+    /* ESC 关闭弹窗/分享预览/深呼吸 */
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
       closeHistory();
+      if (!breatheOverlay.hidden) stopBreathe();
       var overlay = document.getElementById('shareOverlay');
       if (overlay) overlay.classList.remove('show');
     });
@@ -705,6 +840,9 @@
           if (causeEl) causeEl.textContent = explainCause(sedentary, sleep, hr, steps, currentMode);
           activityEl.textContent = out.advice;
           tabooEl.textContent = '⚠️ 绝对禁忌：' + out.taboo;
+
+          /* 手机物理反馈：结果一出来就震一下 */
+          haptic(out.riskLevel);
 
           /* 模块二：运动与拉伸处方 */
           actionEl.textContent = out.action;

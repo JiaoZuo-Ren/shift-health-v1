@@ -11,7 +11,7 @@
       document.documentElement.setAttribute('data-theme', (h >= 6 && h < 18) ? 'day' : 'night');
     })();
   </script>
-  <link rel="stylesheet" href="style.css?v=13">
+  <link rel="stylesheet" href="style.css?v=15">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f7d5b'/%3E%3Cpath d='M8 17h4l2-6 3 10 2-4h5' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <!-- Open Graph：分享到微信/社交平台时展示的标题、简介和缩略图 -->
   <meta property="og:type" content="website">
@@ -92,6 +92,8 @@
             <span class="ring-score" id="vitalityScore">--</span>
             <span class="ring-label">今日活力值</span>
           </div>
+          <!-- 动态情绪小精灵：随分数换图标和动画 -->
+          <span class="ring-emoji" id="ringEmoji" aria-hidden="true">🙂</span>
         </div>
         <p class="ring-tip" id="ringTip">满分 100 分，四项指标各扣 20 分</p>
       </div>
@@ -137,11 +139,24 @@
             <button type="submit" id="aiAskBtn">追问</button>
           </form>
         </div>
+
+        <!-- 不花钱的情绪彩蛋：本地数组随机，不调用接口 -->
+        <div class="fortune">
+          <button type="button" id="fortuneBtn" class="fortune-btn">🎲 抽一句今日能量签</button>
+          <p class="fortune-text" id="fortuneText" aria-live="polite"></p>
+        </div>
       </div>
 
       <div class="actions">
         <button type="button" id="copyBtn" class="ghost-btn">📋 复制建议</button>
         <button type="button" id="shareBtn" class="ghost-btn">生成今日数据卡片</button>
+      </div>
+
+      <!-- 情绪价值：60 秒深呼吸放松 -->
+      <div class="glass panel breathe-panel">
+        <h2><span class="panel-ico">🧘</span>别被数字牵着走</h2>
+        <p class="panel-text sub">数据只是参考。如果现在心跳快、心里烦，先跟着球呼吸 60 秒，比看更多指标有用。</p>
+        <button type="button" id="breatheBtn" class="breathe-open">🧘 开启 60 秒深呼吸放松</button>
       </div>
     </section>
 
@@ -168,6 +183,18 @@
         <button type="button" id="historyClear" class="ghost-btn danger">🗑️ 清空记录</button>
       </div>
     </div>
+  </div>
+
+  <!-- 呼吸放松覆盖层：跟着圆球吸气 / 憋气 / 呼气，60 秒自动结束 -->
+  <div id="breatheOverlay" class="breathe-overlay" aria-hidden="true" hidden>
+    <div class="breathe-stage">
+      <div class="breathe-ball" id="breatheBall">
+        <span class="breathe-phase" id="breathePhase">吸气</span>
+      </div>
+      <p class="breathe-time" id="breatheTime">还剩 60 秒</p>
+      <p class="breathe-tip">吸 4 秒 · 憋 4 秒 · 呼 4 秒</p>
+    </div>
+    <button type="button" id="breatheClose" class="breathe-close">结束放松</button>
   </div>
 
   <!-- 分享卡片：离屏完成截图下载 → 弹出预览 → 手动关闭 -->
@@ -198,6 +225,6 @@
   </div>
 
   <script src="html2canvas.min.js" onerror="this.onerror=null;this.src='https://fastly.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'"></script>
-  <script src="script.js?v=13"></script>
+  <script src="script.js?v=15"></script>
 </body>
 </html>

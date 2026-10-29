@@ -1099,13 +1099,243 @@ button:focus-visible,
   color: #ffd98a;
 }
 
+/* ---------- 情绪价值模块：情绪 Emoji / 呼吸球 / 能量签 ---------- */
+
+/* 环形旁边的情绪小精灵 */
+.ring-emoji {
+  position: absolute;
+  top: 0;
+  right: -4%;
+  font-size: 34px;
+  line-height: 1;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.16));
+  will-change: transform;
+}
+
+.emoji-low { animation: emojiShake 2.4s ease-in-out infinite; }
+.emoji-mid { animation: emojiGlow 3s ease-in-out infinite; }
+.emoji-high { animation: emojiFloat 2.8s ease-in-out infinite; }
+
+/* 红灯：偶尔抖一下，像没电的设备在挣扎 */
+@keyframes emojiShake {
+  0%, 82%, 100% { transform: translateX(0) rotate(0deg); }
+  85% { transform: translateX(-2px) rotate(-4deg); }
+  88% { transform: translateX(2px) rotate(4deg); }
+  91% { transform: translateX(-1px) rotate(-2deg); }
+  94% { transform: translateX(1px) rotate(2deg); }
+}
+
+/* 黄灯：微光呼吸 */
+@keyframes emojiGlow {
+  0%, 100% { opacity: 0.82; filter: drop-shadow(0 0 2px rgba(250, 204, 21, 0.35)); }
+  50% { opacity: 1; filter: drop-shadow(0 0 14px rgba(250, 204, 21, 0.9)); }
+}
+
+/* 绿灯：轻轻上浮 */
+@keyframes emojiFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* ---- 60 秒深呼吸 ---- */
+/* 与上方「复制建议 / 生成卡片」按钮组拉开距离，避免贴在一起看着像重叠 */
+.breathe-panel {
+  position: relative;
+  margin-top: 26px;
+  padding-top: 26px;
+  text-align: center;
+}
+
+/* 顶部一条渐隐细线，进一步区分「这是另一块内容」 */
+.breathe-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 18%;
+  right: 18%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
+}
+
+.breathe-open {
+  width: 100%;
+  margin-top: 14px;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--glass-inner);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.3s ease;
+}
+
+.breathe-open:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.breathe-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  background: radial-gradient(circle at 50% 45%, rgba(22, 28, 44, 0.74), rgba(6, 9, 16, 0.94));
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.breathe-overlay[hidden] { display: none; }
+.breathe-overlay.is-open { opacity: 1; }
+
+.breathe-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  text-align: center;
+}
+
+.breathe-ball {
+  width: min(46vw, 200px);
+  height: min(46vw, 200px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  background: radial-gradient(circle at 35% 30%,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(124, 92, 224, 0.86) 45%,
+    rgba(76, 81, 191, 0.92) 100%);
+  box-shadow:
+    0 0 60px rgba(124, 92, 224, 0.5),
+    inset 0 0 44px rgba(255, 255, 255, 0.32);
+  transform: scale(0.72);
+  will-change: transform;
+}
+
+/* 只在打开后启动呼吸循环，关掉就停，不空转 */
+.breathe-overlay.is-open .breathe-ball {
+  animation: breatheCycle 12s ease-in-out infinite;
+}
+
+/* 0—4s 放大（吸气）→ 4—8s 保持（憋气）→ 8—12s 缩小（呼气） */
+@keyframes breatheCycle {
+  0%      { transform: scale(0.72); }
+  33.33%  { transform: scale(1.12); }
+  66.66%  { transform: scale(1.12); }
+  100%    { transform: scale(0.72); }
+}
+
+/* 系统开启「减少动态效果」时的替代方案：不缩放，改用明暗呼吸 */
+@keyframes breatheFade {
+  0%    { opacity: 0.5; }
+  33.33% { opacity: 1; }
+  66.66% { opacity: 1; }
+  100%  { opacity: 0.5; }
+}
+
+.breathe-phase {
+  opacity: 0.94;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+
+.breathe-time {
+  margin: 0;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.88);
+  font-variant-numeric: tabular-nums;
+}
+
+.breathe-tip {
+  margin: 0;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.breathe-close {
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.breathe-close:hover { background: rgba(255, 255, 255, 0.24); }
+
+/* ---- 每日能量签 ---- */
+.fortune {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line);
+  text-align: center;
+}
+
+.fortune-btn {
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ai);
+  background: transparent;
+  border: 1px dashed var(--ai);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.fortune-btn:hover {
+  background: var(--glass-inner);
+  transform: translateY(-1px);
+}
+
+.fortune-text {
+  min-height: 24px;
+  margin: 12px 0 0;
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--ink);
+}
+
+/* 打字机光标：打完就消失 */
+.fortune-text.typing::after {
+  content: '▍';
+  color: var(--ai);
+  animation: caretBlink 1s step-end infinite;
+}
+
+@keyframes caretBlink {
+  50% { opacity: 0; }
+}
+
 /* ---------- 移动端 ---------- */
 @media (max-width: 480px) {
   .app { padding: 74px 16px 34px; }
   .app-header h1 { font-size: 25px; }
   .ring-score { font-size: 52px; }
+  .ring-emoji { font-size: 27px; right: -2%; }
   .panel { padding: 18px; }
   .actions { flex-direction: column; }
+
+  /* 手机上按钮组变成两行、更高，呼吸面板要再往下让一点 */
+  .breathe-panel {
+    margin-top: 30px;
+    padding-top: 26px;
+  }
 
   /* 手机上大面积高斯模糊非常吃 GPU：缩小模糊半径、去掉一层光斑，
      否则滚动和点击会明显发涩 */
@@ -1134,4 +1364,10 @@ button:focus-visible,
   .blob { animation: none; }
   .ring-bar { transition: none; }
   * { animation-duration: 0.001ms !important; }
+
+  /* 例外：呼吸球换成透明度节奏，既不做缩放，又不丢呼吸引导 */
+  .breathe-overlay.is-open .breathe-ball {
+    animation: breatheFade 12s ease-in-out infinite !important;
+    animation-duration: 12s !important;
+  }
 }
