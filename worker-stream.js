@@ -38,21 +38,22 @@ export default {
 
     const userData = String(body.userData || '').slice(0, 500);
     const baseAdvice = String(body.baseAdvice || '').slice(0, 1500);
+    /* 前端传过来的红黄绿灯判定（老版本前端没有这个字段，兜底为未判定） */
+    const status = String(body.status || '未判定').slice(0, 60);
 
     if (!userData && !baseAdvice) {
       return json({ error: 'empty input' }, 400, cors);
     }
 
     const systemPrompt =
-      '你是一位专业、耐心、说话接地气的私人健康教练，专注久坐人群和夜班人群的健康管理。';
+      '你是一位专业的运动康复私教，说话像朋友一样自然，严禁给出任何医疗诊断或用药建议。';
+
+    /* 因果逻辑：昨日数据是「因」，今日安排是「果」 */
     const userPrompt =
-      '我今天的身体数据：' + userData + '\n\n' +
-      '系统按固定规则给出的基础建议：' + baseAdvice + '\n\n' +
-      '请基于以上内容给一段补充点评：\n' +
-      '1. 用通俗中文口语，像教练当面聊天；\n' +
-      '2. 先点评整体状态 2—3 句，再给 2—3 条具体可执行的补充建议（基础建议里说过的不要重复）；\n' +
-      '3. 有明显风险要提醒关注，必要时建议就医；\n' +
-      '4. 全文 200 字以内，纯文本，不要 Markdown 符号。';
+      '用户昨日的健康账单是：' + userData + '；系统判定：' + status + '。\n' +
+      '系统给出的基础建议是：' + baseAdvice + '。\n\n' +
+      '请用不超过 150 字，结合他昨日的数据，为他规划今天该怎么做。' +
+      '语气像朋友，严禁医疗诊断。纯文本，不要 Markdown 符号。';
 
     let upstream;
     try {
@@ -73,7 +74,7 @@ export default {
             { role: 'user', content: userPrompt }
           ],
           temperature: 0.7,
-          max_tokens: 400,
+          max_tokens: 300,
           stream: true
         })
       });

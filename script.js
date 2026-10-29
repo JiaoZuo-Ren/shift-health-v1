@@ -175,6 +175,54 @@
       key: '今天最该做：保持节奏，别连续坐满两小时。' }
   ];
 
+  /* ================= 红黄绿灯：把规则表的判定换成「昨日因、今日果」的说法 =================
+     规则表里的 risk 原文保留不动（它是规则验收基线），这里只做展示层的语义映射。 */
+  var RISK_LABEL = {
+    red: '🔴 红灯 · 恢复赤字',
+    yellow: '🟡 黄灯 · 需要微调',
+    green: '🟢 绿灯 · 良性循环'
+  };
+
+  function riskLabelOf(level) {
+    return RISK_LABEL[level] || '';
+  }
+
+  /* 用昨日数据解释「为什么是这个灯」，让用户看懂因果，而不是只接一个结论 */
+  function explainCause(sedentaryHours, sleepHours, hrInput, steps, mode) {
+    var reasons = [];
+    var sleep = Number(sleepHours);
+    var sedentary = Number(sedentaryHours);
+    var st = Number(steps);
+    var hr = (hrInput === null || hrInput === '' || typeof hrInput === 'undefined') ? null : Number(hrInput);
+
+    if (mode === 'night') {
+      if (sleep < 5) reasons.push('昨晚只睡 ' + sleep + ' 小时，夜班后的睡眠债已经很明显');
+      else if (sleep < 7) reasons.push('昨晚睡了 ' + sleep + ' 小时，还没补够');
+      else reasons.push('昨晚睡了 ' + sleep + ' 小时，恢复得不错');
+    } else {
+      if (sleep < 6) {
+        var debt = (7 - sleep).toFixed(1).replace(/\.0$/, '');
+        reasons.push('昨晚只睡 ' + sleep + ' 小时，欠了 ' + debt + ' 小时睡眠债');
+      } else if (sleep < 7) {
+        reasons.push('昨晚睡了 ' + sleep + ' 小时，刚过及格线');
+      } else {
+        reasons.push('昨晚睡了 ' + sleep + ' 小时，睡眠充足');
+      }
+
+      if (sedentary > 6) reasons.push('昨天坐了 ' + sedentary + ' 小时');
+      else if (sedentary >= 4) reasons.push('昨天坐了 ' + sedentary + ' 小时，属中等');
+      else reasons.push('昨天只坐 ' + sedentary + ' 小时，起身还算频繁');
+    }
+
+    if (st < 3000) reasons.push('只走了 ' + st + ' 步');
+    else if (st < 6000) reasons.push('走了 ' + st + ' 步，没到 6000');
+    else reasons.push('走了 ' + st + ' 步，步数达标');
+
+    if (hr !== null && hr >= 80) reasons.push('今晨静息心率 ' + hr + ' 偏高');
+
+    return '昨日账单：' + reasons.join('，') + '。';
+  }
+
   /* ================= 匹配 ================= */
   function matchRule(rule, sBin, slBin, hBin, stBin) {
     if (rule.sedentary !== sBin) return false;
@@ -433,6 +481,7 @@
     var actionEl = document.getElementById('actionAdvice');
     var nutritionEl = document.getElementById('nutritionAdvice');
     var riskBadge = document.getElementById('riskBadge');
+    var causeEl = document.getElementById('causeExplain');
     var keyEl = document.getElementById('keyAdvice');
     var errEl = document.getElementById('formError');
     var vitalityScore = document.getElementById('vitalityScore');
@@ -650,9 +699,10 @@
           var micro = computeMicroAction(sedentary, sleep, currentMode);
           var hydration = computeHydration(steps, sedentary, currentMode);
 
-          /* 模块一：状态诊断 */
-          riskBadge.textContent = out.risk;
+          /* 模块一：状态诊断（红黄绿灯 + 昨日账单解释） */
+          riskBadge.textContent = riskLabelOf(out.riskLevel) || out.risk;
           riskBadge.className = 'risk-badge risk-' + out.riskLevel;
+          if (causeEl) causeEl.textContent = explainCause(sedentary, sleep, hr, steps, currentMode);
           activityEl.textContent = out.advice;
           tabooEl.textContent = '⚠️ 绝对禁忌：' + out.taboo;
 
@@ -876,7 +926,8 @@
       if (aiBtn.disabled) return;
       askCoach({
         userData: buildUserData(),
-        baseAdvice: activityEl.textContent
+        baseAdvice: activityEl.textContent,
+        status: riskBadge.textContent
       });
     });
 
@@ -896,7 +947,8 @@
 
       askCoach({
         userData: buildUserData(),
-        baseAdvice: activityEl.textContent + '\n【我的追问】' + q
+        baseAdvice: activityEl.textContent + '\n【我的追问】' + q,
+        status: riskBadge.textContent
       }, '教练正在回答你的追问…').then(function () {
         aiQuestion.value = '';
       });
@@ -909,7 +961,7 @@
         return;
       }
       /* 用规则表原始字段拼文本，避免和页面上的前缀（⚠️ 绝对禁忌：/ 微动作：）重复 */
-      var text = '【状态诊断】' + lastOut.risk +
+      var text = '【状态诊断】' + riskBadge.textContent +
         '\n【活动建议】' + lastOut.advice +
         '\n【绝对禁忌】' + lastOut.taboo +
         '\n【运动与拉伸处方】' + lastOut.action +
@@ -1004,11 +1056,11 @@
       modeStatus.textContent = mode === 'day' ? '当前模式：久坐上班族' : '当前模式：夜班/倒时差';
       fieldSedentary.style.display = mode === 'day' ? '' : 'none';
       appDesc.textContent = mode === 'day'
-        ? '输入久坐、睡眠、心率、步数，按固定规则给出今天最合适的活动安排。'
-        : '输入睡眠、心率、步数，按夜班专属规则给出今天的建议。';
+        ? '输入昨日作息数据，为你生成今日最合适的行动安排。'
+        : '输入昨日睡眠、今晨心率和昨日步数，为你生成今日的行动安排。';
       appSub.textContent = mode === 'day'
-        ? '专为久坐上班族、学生设计。只需填入今日数据，获取你的专属活动建议。'
-        : '专为夜班、倒时差人群设计。只需填入今日数据，获取你的专属活动建议。';
+        ? '用昨日的账单，定今日的预算：昨晚怎么睡、昨天坐多久，决定今天怎么动。'
+        : '用昨日的账单，定今日的预算：夜班后睡够没、走了多少步，决定今天补什么。';
       writeInputs(modeInputs[mode] || {});
       result.hidden = true;
       errEl.hidden = true;

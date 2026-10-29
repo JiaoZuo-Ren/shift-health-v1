@@ -11,14 +11,14 @@
       document.documentElement.setAttribute('data-theme', (h >= 6 && h < 18) ? 'day' : 'night');
     })();
   </script>
-  <link rel="stylesheet" href="style.css?v=12">
+  <link rel="stylesheet" href="style.css?v=13">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f7d5b'/%3E%3Cpath d='M8 17h4l2-6 3 10 2-4h5' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <!-- Open Graph：分享到微信/社交平台时展示的标题、简介和缩略图 -->
   <meta property="og:type" content="website">
   <meta property="og:locale" content="zh_CN">
   <meta property="og:site_name" content="今日活动建议">
   <meta property="og:title" content="今日活动建议 — 告诉你今天该做什么、不该做什么">
-  <meta property="og:description" content="输入久坐、睡眠、心率、步数四个数字，按固定规则给出今天最合适的活动安排。久坐人群的数据翻译，不猜、不编。">
+  <meta property="og:description" content="输入昨日久坐、睡眠、心率和步数，按固定规则给出今天最合适的行动安排。用昨日的账单，定今日的预算。">
   <meta property="og:url" content="https://jiaozuo-ren.github.io/shift-health-v1/">
   <meta property="og:image" content="https://jiaozuo-ren.github.io/shift-health-v1/og-preview.png">
   <meta property="og:image:width" content="1200">
@@ -27,7 +27,7 @@
   <!-- Twitter / X 卡片 -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="今日活动建议 — 告诉你今天该做什么、不该做什么">
-  <meta name="twitter:description" content="输入久坐、睡眠、心率、步数四个数字，按固定规则给出今天最合适的活动安排。">
+  <meta name="twitter:description" content="输入昨日久坐、睡眠、心率和步数，按固定规则给出今天最合适的行动安排。">
   <meta name="twitter:image" content="https://jiaozuo-ren.github.io/shift-health-v1/og-preview.png">
   <!-- 提示：og:url 与 og:image 里的域名/路径，部署后请按实际线上地址更新 -->
 </head>
@@ -46,8 +46,8 @@
     <header class="app-header">
       <p class="mode-status" id="modeStatus">当前模式：久坐上班族</p>
       <h1>今日活动建议</h1>
-      <p id="appDesc">输入久坐、睡眠、心率、步数，按固定规则给出今天最合适的活动安排。</p>
-      <p class="app-sub" id="appSub">专为久坐上班族、学生设计。只需填入今日数据，获取你的专属活动建议。</p>
+      <p id="appDesc">输入昨日作息数据，为你生成今日最合适的行动安排。</p>
+      <p class="app-sub" id="appSub">用昨日的账单，定今日的预算：昨晚怎么睡、昨天坐多久，决定今天怎么动。</p>
       <button type="button" id="modeSwitchBtn" class="mode-switch-btn">切换人群模式</button>
       <p class="mode-hint">点一下切换模式</p>
     </header>
@@ -55,21 +55,21 @@
     <!-- 输入区 -->
     <section class="glass form-card" aria-label="输入数据">
       <div class="field" id="fieldSedentary">
-        <label for="sedentary">久坐时长（小时）</label>
-        <input type="number" id="sedentary" inputmode="decimal" placeholder="如 7" min="0" max="24" step="0.1" required>
+        <label for="sedentary">昨日久坐时长（小时）</label>
+        <input type="number" id="sedentary" inputmode="decimal" placeholder="例如 7" min="0" max="24" step="0.1" required>
       </div>
       <div class="field">
-        <label for="sleep">睡眠时长（小时）</label>
-        <input type="number" id="sleep" inputmode="decimal" placeholder="如 6.5" min="0" max="24" step="0.1" required>
+        <label for="sleep">昨晚睡眠时长（小时）</label>
+        <input type="number" id="sleep" inputmode="decimal" placeholder="例如 6.5" min="0" max="24" step="0.1" required>
       </div>
       <div class="field">
-        <label for="hr">静息心率（次/分钟）</label>
-        <input type="number" id="hr" inputmode="numeric" placeholder="如 65" min="30" max="250" step="1">
+        <label for="hr">今晨静息心率（次/分钟）</label>
+        <input type="number" id="hr" inputmode="numeric" placeholder="例如 65" min="30" max="250" step="1">
         <p class="field-hint">不知道就留空</p>
       </div>
       <div class="field">
-        <label for="steps">每日步数（步）</label>
-        <input type="number" id="steps" inputmode="numeric" placeholder="如 6000" min="0" max="100000" step="1" required>
+        <label for="steps">昨日步数（步）</label>
+        <input type="number" id="steps" inputmode="numeric" placeholder="例如 6000" min="0" max="100000" step="1" required>
       </div>
       <div class="demo-row">
         <button type="button" id="demoBtn" class="demo-btn">一键填入示例数据，立刻看看效果</button>
@@ -100,6 +100,7 @@
       <div class="glass panel">
         <h2><span class="panel-ico">💡</span>状态诊断</h2>
         <p class="risk-badge" id="riskBadge"></p>
+        <p class="cause" id="causeExplain"></p>
         <p class="panel-text" id="activityAdvice"></p>
         <p class="taboo" id="tabooAdvice"></p>
       </div>
@@ -197,6 +198,6 @@
   </div>
 
   <script src="html2canvas.min.js" onerror="this.onerror=null;this.src='https://fastly.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'"></script>
-  <script src="script.js?v=12"></script>
+  <script src="script.js?v=13"></script>
 </body>
 </html>

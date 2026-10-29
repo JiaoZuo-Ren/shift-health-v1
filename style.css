@@ -430,6 +430,18 @@ button:focus-visible,
   font-weight: 700;
 }
 
+/* 「昨日账单」：解释为什么判定成这个灯，昨日因 → 今日果 */
+.cause {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--muted);
+  background: var(--glass-inner);
+  border-left: 3px solid var(--line);
+  border-radius: 0 10px 10px 0;
+}
+
 .risk-red {
   background: rgba(226, 90, 78, 0.16);
   color: #b3423a;
