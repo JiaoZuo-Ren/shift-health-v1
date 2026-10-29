@@ -746,6 +746,8 @@ button:focus-visible,
 .icon-btn:hover { border-color: var(--accent); }
 
 .history-list {
+  flex: 1 1 auto;
+  min-height: 0;   /* 关键：让列表在 flex 列里正确滚动，否则会撑破弹窗 */
   overflow-y: auto;
   padding-right: 2px;
 }

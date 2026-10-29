@@ -452,6 +452,8 @@
     var currentMode = 'day';
     var lastOut = null;
     var lastVitality = 0;
+    var lastMicro = '';
+    var lastHydration = '';
 
     var RING_C = 2 * Math.PI * 92; /* 与 SVG 中 r=92 对应 */
     var AI_BTN_TEXT = '🤖 听听AI私教怎么说';
@@ -562,7 +564,10 @@
     }
 
     function restoreRecord(rec) {
-      if (rec.mode && rec.mode !== currentMode) setMode(rec.mode);
+      /* 只接受合法模式值，避免脏数据把 currentMode 写成 undefined */
+      if ((rec.mode === 'day' || rec.mode === 'night') && rec.mode !== currentMode) {
+        setMode(rec.mode);
+      }
       document.getElementById('sedentary').value = (rec.sedentary === null || rec.sedentary === undefined) ? '' : rec.sedentary;
       document.getElementById('sleep').value = (rec.sleep === null || rec.sleep === undefined) ? '' : rec.sleep;
       document.getElementById('hr').value = (rec.hr === null || rec.hr === undefined) ? '' : rec.hr;
@@ -591,8 +596,16 @@
     document.getElementById('historyClear').addEventListener('click', function () {
       clearHistory();
       renderHistory();
-      if (lastTestEl) lastTestEl.hidden = true;
+      updateLastTestLabel();
       showToast('历史记录已清空');
+    });
+
+    /* ESC 关闭弹窗/分享预览 */
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      closeHistory();
+      var overlay = document.getElementById('shareOverlay');
+      if (overlay) overlay.classList.remove('show');
     });
 
     /* --- 生成建议 --- */
@@ -650,7 +663,8 @@
 
           lastOut = out;
           lastVitality = vitality;
-          renderVitality(vitality);
+          lastMicro = micro;
+          lastHydration = hydration;
 
           /* 存历史（最多 7 条） */
           saveHistory({
@@ -662,12 +676,16 @@
             steps: steps,
             vitality: vitality
           });
+          updateLastTestLabel();
 
           /* 新结果出来，旧 AI 建议作废 */
           aiCard.hidden = true;
           aiReply.textContent = '';
 
+          /* 先显示结果区，再在下一帧渲染环形——否则首次生成时元素还是 display:none，
+             生长动画会被浏览器直接跳过 */
           result.hidden = false;
+          requestAnimationFrame(function () { renderVitality(vitality); });
           result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
@@ -786,14 +804,15 @@
         showToast('还没有结果，先点“生成今天的建议”');
         return;
       }
-      var text = '【状态诊断】' + riskBadge.textContent +
-        '\n【活动建议】' + activityEl.textContent +
-        '\n【绝对禁忌】' + tabooEl.textContent +
-        '\n【运动与拉伸处方】' + actionEl.textContent +
-        '\n【微动作】' + microEl.textContent +
-        '\n【饮食与营养干预】' + nutritionEl.textContent +
-        '\n【饮水目标】' + hydrationEl.textContent +
-        '\n【今天最该做的一件事】' + keyEl.textContent +
+      /* 用规则表原始字段拼文本，避免和页面上的前缀（⚠️ 绝对禁忌：/ 微动作：）重复 */
+      var text = '【状态诊断】' + lastOut.risk +
+        '\n【活动建议】' + lastOut.advice +
+        '\n【绝对禁忌】' + lastOut.taboo +
+        '\n【运动与拉伸处方】' + lastOut.action +
+        '\n【微动作】' + lastMicro +
+        '\n【饮食与营养干预】' + lastOut.nutrition +
+        '\n【饮水目标】' + lastHydration +
+        '\n【今天最该做的一件事】' + lastOut.key +
         '\n【今日活力值】' + lastVitality + ' / 100';
       copyText(text).then(
         function () { showToast('已复制'); },
@@ -903,20 +922,29 @@
     /* 清理旧版手动主题留下的缓存键（本版已改为按时间自动切换） */
     try { localStorage.removeItem('shiftHealthTheme'); } catch (e) {}
 
-    /* --- 页面加载：展示最近一条历史记录的摘要 --- */
-    (function showLastTest() {
+    /* --- 页脚“上次测试”摘要：取历史里最新的一条 --- */
+    function updateLastTestLabel() {
+      if (!lastTestEl) return;
       var arr = loadHistory();
-      if (!arr.length || !lastTestEl) return;
+      if (!arr.length) {
+        lastTestEl.hidden = true;
+        return;
+      }
       var rec = arr[0];
       var d = new Date(rec.ts);
       var text = getLastTestText({
         date: d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(),
         vitality: rec.vitality
       });
-      if (!text) return;
+      if (!text) {
+        lastTestEl.hidden = true;
+        return;
+      }
       lastTestEl.textContent = text;
       lastTestEl.hidden = false;
-    })();
+    }
+
+    updateLastTestLabel();
   }
 
   function showError(errEl, msg) {
