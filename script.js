@@ -498,9 +498,24 @@
     var aiAskForm = document.getElementById('aiAskForm');
     var aiQuestion = document.getElementById('aiQuestion');
     var aiAskBtn = document.getElementById('aiAskBtn');
-    var historyModal = document.getElementById('historyModal');
     var historyList = document.getElementById('historyList');
     var lastTestEl = document.getElementById('lastTest');
+
+    /* 🆕 App Shell：底部导航 / 金句盲盒 / 番茄钟 / 打卡 / AI 限额 */
+    var tabbar = document.getElementById('tabbar');
+    var appScroll = document.getElementById('appScroll');
+    var quoteText = document.getElementById('quoteText');
+    var quoteRefresh = document.getElementById('quoteRefresh');
+    var streakDays = document.getElementById('streakDays');
+    var pomoCard = document.getElementById('pomoCard');
+    var pomoTime = document.getElementById('pomoTime');
+    var pomoBar = document.getElementById('pomoBar');
+    var pomoBtn = document.getElementById('pomoBtn');
+    var pomoReset = document.getElementById('pomoReset');
+    var pomoState = document.getElementById('pomoState');
+    var pomodoroOverlay = document.getElementById('pomodoroOverlay');
+    var pomodoroOk = document.getElementById('pomodoroOk');
+    var aiQuotaEl = document.getElementById('aiQuota');
     var ringEmoji = document.getElementById('ringEmoji');
     var breatheBtn = document.getElementById('breatheBtn');
     var breatheOverlay = document.getElementById('breatheOverlay');
@@ -770,33 +785,275 @@
       document.getElementById('sleep').value = (rec.sleep === null || rec.sleep === undefined) ? '' : rec.sleep;
       document.getElementById('hr').value = (rec.hr === null || rec.hr === undefined) ? '' : rec.hr;
       document.getElementById('steps').value = (rec.steps === null || rec.steps === undefined) ? '' : rec.steps;
-      closeHistory();
+      /* 🆕 PWA 版：历史记录直接放在「记录」页，回填后跳回首页并自动生成 */
+      switchTab('home');
       runGenerate();
       showToast('已回填历史数据');
     }
 
-    function openHistory() {
-      renderHistory();
-      historyModal.classList.add('show');
-      historyModal.setAttribute('aria-hidden', 'false');
-    }
-
-    function closeHistory() {
-      historyModal.classList.remove('show');
-      historyModal.setAttribute('aria-hidden', 'true');
-    }
-
-    document.getElementById('historyBtn').addEventListener('click', openHistory);
-    document.getElementById('historyClose').addEventListener('click', closeHistory);
-    historyModal.addEventListener('click', function (e) {
-      if (e.target.getAttribute('data-close') === '1') closeHistory();
-    });
-    document.getElementById('historyClear').addEventListener('click', function () {
+    /* 清空记录：历史与打卡日期一起清，两处入口共用 */
+    function clearHealthData() {
       clearHistory();
+      try { localStorage.removeItem(CHECKIN_KEY); } catch (e) {}
       renderHistory();
+      renderStreak();
       updateLastTestLabel();
-      showToast('历史记录已清空');
-    });
+      showToast('记录已清空');
+    }
+
+    document.getElementById('historyClear').addEventListener('click', clearHealthData);
+    var clearHistoryBtn = document.getElementById('clearHistoryBtn');
+    if (clearHistoryBtn) clearHistoryBtn.addEventListener('click', clearHealthData);
+
+    /* ================= 🆕 底部 Tab 导航：三个页面切换 ================= */
+    function switchTab(name) {
+      var pages = { home: 'pageHome', history: 'pageHistory', me: 'pageMe' };
+      Object.keys(pages).forEach(function (key) {
+        var page = document.getElementById(pages[key]);
+        if (page) page.classList.toggle('is-active', key === name);
+      });
+      if (tabbar) {
+        Array.prototype.forEach.call(tabbar.querySelectorAll('.tab-btn'), function (btn) {
+          btn.classList.toggle('is-active', btn.getAttribute('data-tab') === name);
+        });
+      }
+      /* 记录页每次进入都刷新，保证刚生成的记录立刻看得到 */
+      if (name === 'history') {
+        renderHistory();
+        renderStreak();
+      }
+      if (appScroll) appScroll.scrollTop = 0;
+    }
+
+    if (tabbar) {
+      tabbar.addEventListener('click', function (e) {
+        var btn = e.target.closest ? e.target.closest('.tab-btn') : null;
+        if (btn) switchTab(btn.getAttribute('data-tab'));
+      });
+    }
+
+    /* ================= 🆕 连续打卡天数 ================= */
+    var CHECKIN_KEY = 'shiftHealthCheckins';
+
+    function loadCheckins() {
+      try {
+        var arr = JSON.parse(localStorage.getItem(CHECKIN_KEY) || '[]');
+        return Array.isArray(arr) ? arr : [];
+      } catch (e) { return []; }
+    }
+
+    function dayStamp(d) {
+      return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    }
+
+    /* 每次成功生成建议都记一笔当天打卡（去重，最多留 90 天） */
+    function addCheckin() {
+      var arr = loadCheckins();
+      var today = dayStamp(new Date());
+      if (arr.indexOf(today) === -1) {
+        arr.push(today);
+        if (arr.length > 90) arr = arr.slice(-90);
+        try { localStorage.setItem(CHECKIN_KEY, JSON.stringify(arr)); } catch (e) {}
+      }
+    }
+
+    function renderStreak() {
+      var arr = loadCheckins();
+      var n = 0;
+      if (arr.length) {
+        var set = {};
+        arr.forEach(function (d) { set[d] = true; });
+        /* 从今天往回数连续天数；今天还没打卡就从昨天起算，不打击积极性 */
+        var cursor = new Date();
+        if (!set[dayStamp(cursor)]) cursor.setDate(cursor.getDate() - 1);
+        while (set[dayStamp(cursor)]) {
+          n++;
+          cursor.setDate(cursor.getDate() - 1);
+        }
+      }
+      if (streakDays) streakDays.textContent = n;
+      var inline = document.getElementById('streakDaysInline');
+      if (inline) inline.textContent = n;
+    }
+
+    /* ================= 🆕 久坐番茄钟：50 分钟专注 + 到点提醒 =================
+       运行状态存 localStorage：离开页面 / 刷新后计时继续，到点照常提醒 */
+    var POMO_TOTAL_MS = 50 * 60 * 1000;
+    var POMO_KEY = 'shiftHealthPomo';
+    var pomoEndAt = 0;        /* 运行中：结束时间戳 */
+    var pomoRemaining = POMO_TOTAL_MS;
+    var pomoRunning = false;
+    var pomoTick = null;
+
+    function fmtPomo(ms) {
+      var total = Math.max(0, Math.ceil(ms / 1000));
+      var m = Math.floor(total / 60);
+      var r = total % 60;
+      return ('0' + m).slice(-2) + ':' + ('0' + r).slice(-2);
+    }
+
+    function savePomoState() {
+      try {
+        localStorage.setItem(POMO_KEY, JSON.stringify({
+          running: pomoRunning,
+          endAt: pomoRunning ? pomoEndAt : 0,
+          remaining: pomoRemaining
+        }));
+      } catch (e) {}
+    }
+
+    function loadPomoState() {
+      try { return JSON.parse(localStorage.getItem(POMO_KEY) || 'null'); } catch (e) { return null; }
+    }
+
+    function renderPomo() {
+      if (!pomoTime) return;
+      var left = pomoRunning ? Math.max(0, pomoEndAt - Date.now()) : pomoRemaining;
+      pomoTime.textContent = fmtPomo(left);
+      if (pomoBar) {
+        pomoBar.style.width = Math.round(((POMO_TOTAL_MS - left) / POMO_TOTAL_MS) * 100) + '%';
+      }
+    }
+
+    function setPomoCard(cls) {
+      if (!pomoCard) return;
+      pomoCard.classList.remove('is-running', 'is-done');
+      if (cls) pomoCard.classList.add(cls);
+    }
+
+    function stopPomoTick() {
+      if (pomoTick) { clearInterval(pomoTick); pomoTick = null; }
+    }
+
+    /* 到点提示音：WebAudio 短促两声，失败静默（有的浏览器要求用户先交互过） */
+    function pomoBeep() {
+      try {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        var ctx = new AC();
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.12, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.9);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.9);
+      } catch (e) {}
+    }
+
+    function openPomodoro() {
+      if (!pomodoroOverlay) return;
+      pomodoroOverlay.classList.add('show');
+      pomodoroOverlay.setAttribute('aria-hidden', 'false');
+    }
+
+    function closePomodoro() {
+      if (!pomodoroOverlay) return;
+      pomodoroOverlay.classList.remove('show');
+      pomodoroOverlay.setAttribute('aria-hidden', 'true');
+    }
+
+    function pomoFinish() {
+      stopPomoTick();
+      pomoRunning = false;
+      pomoRemaining = POMO_TOTAL_MS;
+      setPomoCard('is-done');
+      if (pomoBtn) pomoBtn.textContent = '再来一轮';
+      if (pomoState) pomoState.textContent = '完成了！起来活动 2 分钟吧';
+      renderPomo();
+      savePomoState();
+      /* 震动 + 提示音 + 弹窗三连提醒 */
+      if (navigator.vibrate) { try { navigator.vibrate([300, 120, 300]); } catch (e) {} }
+      pomoBeep();
+      openPomodoro();
+    }
+
+    function startPomo() {
+      pomoRunning = true;
+      pomoEndAt = Date.now() + pomoRemaining;
+      setPomoCard('is-running');
+      if (pomoBtn) pomoBtn.textContent = '暂停';
+      if (pomoState) pomoState.textContent = '专注中 · 到点会提醒你起来活动';
+      stopPomoTick();
+      pomoTick = setInterval(function () {
+        if (pomoEndAt - Date.now() <= 0) { pomoFinish(); return; }
+        renderPomo();
+      }, 250);
+      renderPomo();
+      savePomoState();
+    }
+
+    function pausePomo() {
+      pomoRunning = false;
+      pomoRemaining = Math.max(0, pomoEndAt - Date.now());
+      stopPomoTick();
+      setPomoCard(null);
+      if (pomoBtn) pomoBtn.textContent = '继续专注';
+      if (pomoState) pomoState.textContent = '已暂停 · 随时可以继续';
+      renderPomo();
+      savePomoState();
+    }
+
+    function resetPomo() {
+      pomoRunning = false;
+      pomoRemaining = POMO_TOTAL_MS;
+      stopPomoTick();
+      setPomoCard(null);
+      if (pomoBtn) pomoBtn.textContent = '开始专注';
+      if (pomoState) pomoState.textContent = '还没开始 · 计时期间离开页面也会继续';
+      renderPomo();
+      savePomoState();
+    }
+
+    if (pomoBtn) {
+      pomoBtn.addEventListener('click', function () {
+        if (pomoRunning) pausePomo(); else startPomo();
+      });
+    }
+    if (pomoReset) pomoReset.addEventListener('click', resetPomo);
+    if (pomodoroOk) pomodoroOk.addEventListener('click', closePomodoro);
+    if (pomodoroOverlay) {
+      pomodoroOverlay.addEventListener('click', function (e) {
+        if (e.target.getAttribute && e.target.getAttribute('data-pomo-close') === '1') closePomodoro();
+      });
+    }
+
+    /* 恢复计时：刷新 / 关闭页面再进来，运行中的番茄钟继续走 */
+    (function restorePomo() {
+      if (!pomoTime) return;
+      var st = loadPomoState();
+      if (!st) { renderPomo(); return; }
+      if (st.running && st.endAt > Date.now()) {
+        pomoEndAt = st.endAt;
+        pomoRunning = true;
+        setPomoCard('is-running');
+        if (pomoBtn) pomoBtn.textContent = '暂停';
+        if (pomoState) pomoState.textContent = '专注中 · 到点会提醒你起来活动';
+        pomoTick = setInterval(function () {
+          if (pomoEndAt - Date.now() <= 0) { pomoFinish(); return; }
+          renderPomo();
+        }, 250);
+        renderPomo();
+      } else if (st.running && st.endAt <= Date.now()) {
+        /* 页面关着的时候时间就到了：不再打扰，呈现完成态 */
+        pomoRunning = false;
+        pomoRemaining = POMO_TOTAL_MS;
+        setPomoCard('is-done');
+        if (pomoBtn) pomoBtn.textContent = '再来一轮';
+        if (pomoState) pomoState.textContent = '上次专注已完成';
+        renderPomo();
+      } else if (st.remaining && st.remaining < POMO_TOTAL_MS) {
+        pomoRemaining = st.remaining;
+        if (pomoBtn) pomoBtn.textContent = '继续专注';
+        if (pomoState) pomoState.textContent = '已暂停 · 随时可以继续';
+        renderPomo();
+      } else {
+        renderPomo();
+      }
+    })();
 
     /* ================= 情绪价值：60 秒深呼吸 ================= */
     var BREATHE_TOTAL_MS = 60000;   /* 总共 60 秒 */
@@ -878,6 +1135,41 @@
     var fortuneTimer = null;
     var lastFortune = -1;
 
+    /* ================= 🆕 首页金句盲盒：每次刷新随机一句，打字机效果 ================= */
+    var quoteTimer = null;
+
+    function typeQuote(text) {
+      if (!quoteText) return;
+      if (quoteTimer) { clearInterval(quoteTimer); quoteTimer = null; }
+      quoteText.textContent = '';
+      quoteText.classList.add('typing');
+      var i = 0;
+      quoteTimer = setInterval(function () {
+        i += 1;
+        quoteText.textContent = text.slice(0, i);
+        if (i >= text.length) {
+          clearInterval(quoteTimer);
+          quoteTimer = null;
+          quoteText.classList.remove('typing');
+        }
+      }, 45);
+    }
+
+    function playQuote() {
+      var idx = Math.floor(Math.random() * FORTUNES.length);
+      typeQuote(FORTUNES[idx]);
+    }
+
+    /* 页面加载即开盲盒 */
+    playQuote();
+    if (quoteRefresh) {
+      var flipQuote = function () { playQuote(); };
+      quoteRefresh.addEventListener('click', flipQuote);
+      quoteRefresh.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flipQuote(); }
+      });
+    }
+
     /* 打字机效果：逐字吐出来，打完收起光标 */
     function typeFortune(text) {
       if (fortuneTimer) { clearInterval(fortuneTimer); fortuneTimer = null; }
@@ -905,10 +1197,10 @@
     /* ESC 关闭弹窗/分享预览/深呼吸 */
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
-      /* 只关最上面那一层，避免一次 ESC 把抽屉和历史一起关掉 */
+      /* 只关最上面那一层，避免一次 ESC 把所有浮层一起关掉 */
       if (aiOverlay && !aiOverlay.hidden) { closeAiSheet(); return; }
+      if (pomodoroOverlay && pomodoroOverlay.classList.contains('show')) { closePomodoro(); return; }
       closeResultSheet();
-      closeHistory();
       if (!breatheOverlay.hidden) stopBreathe();
       var overlay = document.getElementById('shareOverlay');
       if (overlay) overlay.classList.remove('show');
@@ -987,6 +1279,7 @@
             vitality: vitality
           });
           updateLastTestLabel();
+          addCheckin();              /* 🆕 记一笔当天打卡（供「记录」页算连续天数） */
 
           /* 新结果出来，旧 AI 建议作废，下次点入口会重新问一次 */
           aiCard.hidden = true;
@@ -1025,6 +1318,43 @@
     /* --- AI 私教 --- */
     var lastAiPayload = null;   /* 记住最近一次请求，失败后可原地重试 */
     var lastAiWaiting = '';
+
+    /* ================= 🆕 AI 每日限额：每天 3 次完整咨询 =================
+       计次规则：主回答「成功拿到回复」才 +1；失败重试与追问不额外扣次数 */
+    var AI_DAILY_LIMIT = 3;
+    var AI_QUOTA_KEY = 'shiftHealthAiQuota';
+
+    function getAiQuota() {
+      var today = dayStamp(new Date());
+      var q = null;
+      try { q = JSON.parse(localStorage.getItem(AI_QUOTA_KEY) || 'null'); } catch (e) {}
+      if (!q || q.date !== today) q = { date: today, used: 0 };   /* 跨天自动清零 */
+      return q;
+    }
+
+    function consumeAiQuota() {
+      var q = getAiQuota();
+      q.used += 1;
+      try { localStorage.setItem(AI_QUOTA_KEY, JSON.stringify(q)); } catch (e) {}
+    }
+
+    function aiQuotaLeft() {
+      return Math.max(0, AI_DAILY_LIMIT - getAiQuota().used);
+    }
+
+    function updateAiQuotaUi() {
+      if (!aiQuotaEl || !aiBtn) return;
+      var left = aiQuotaLeft();
+      if (left <= 0) {
+        aiQuotaEl.innerHTML = '今天的 ' + AI_DAILY_LIMIT + ' 次咨询已用完，<em>明天再来</em>';
+        aiBtn.disabled = true;
+        aiBtn.textContent = '今日次数已用完';
+      } else {
+        aiQuotaEl.innerHTML = '今日剩余咨询次数：<em>' + left + '</em> / ' + AI_DAILY_LIMIT;
+        aiBtn.disabled = false;
+        aiBtn.textContent = AI_BTN_TEXT;
+      }
+    }
 
     function setAiBusy(busy) {
       aiBtn.disabled = busy;
@@ -1071,6 +1401,7 @@
       function finish() {
         clearTimers();
         setAiBusy(false);
+        updateAiQuotaUi();         /* 🆕 请求结束后刷新剩余次数显示 */
       }
 
       /* 拿到完整文字（老版 Worker 走这里，或浏览器不支持流） */
@@ -1081,6 +1412,7 @@
         aiReply.textContent = text;
         aiRetryBtn.hidden = true;
         aiHasReply = true;
+        consumeAiQuota();          /* 🆕 拿到完整回复才算消耗一次 */
       }
 
       return fetch(AI_ENDPOINT, {
@@ -1179,6 +1511,12 @@
         return;
       }
       if (aiBtn.disabled) return;
+      /* 🆕 每日 3 次限额：用完就不再发请求 */
+      if (aiQuotaLeft() <= 0) {
+        showToast('今天的 ' + AI_DAILY_LIMIT + ' 次咨询已用完，明天再来吧');
+        updateAiQuotaUi();
+        return;
+      }
       askCoach({
         userData: buildUserData(),
         baseAdvice: activityEl.textContent,
@@ -1364,6 +1702,19 @@
     }
 
     updateLastTestLabel();
+
+    /* 🆕 初始化 AI 剩余次数显示 */
+    updateAiQuotaUi();
+
+    /* ================= 🆕 PWA：注册 Service Worker =================
+       仅在 https 或 localhost 下生效；file:// 双击打开时自动跳过 */
+    if ('serviceWorker' in navigator &&
+        (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./service-worker.js')
+          .catch(function () { /* 注册失败不影响页面正常使用 */ });
+      });
+    }
   }
 
   function showError(errEl, msg) {

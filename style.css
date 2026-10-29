@@ -1617,3 +1617,414 @@ body.sheet-open { overflow: hidden; }
     animation-duration: 12s !important;
   }
 }
+
+/* ============================================================
+   PWA App Shell（v19 追加段）
+   —— 手机壳 / 底部 Tab / 三页容器 / 金句盲盒 / 番茄钟 / 我的页
+   注意：本段写在文件最末尾，用于覆盖上方同名规则
+   ============================================================ */
+
+/* ---------- 手机壳：PC 上是模拟器，手机上铺满 ---------- */
+.phone-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* PC 上的暗色遮罩背景；手机上整个 shell 就是一屏，看不出 */
+  background: rgba(10, 16, 14, 0.9);
+}
+
+.phone {
+  position: relative;
+  width: 100%;
+  max-width: 430px;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-base);
+  transition: background 0.9s ease;
+}
+
+/* PC 宽屏才模拟手机：居中悬浮卡片 + 圆角阴影 */
+@media (min-width: 481px) {
+  .phone {
+    max-width: 430px;
+    height: min(890px, 100vh);
+    border-radius: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55);
+  }
+}
+
+/* 手机（或窄窗口）上铺满整个视口，圆角归零 */
+@media (max-width: 480px) {
+  .phone-shell {
+    background: none;   /* 手机上看不到遮罩 */
+  }
+  .phone {
+    max-width: none;
+    border-radius: 0;
+    border: 0;
+    box-shadow: none;
+  }
+}
+
+/* ---------- 流光背景限制在手机壳内 ---------- */
+.phone .aurora {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* blob 原本按 vw/vh 取尺寸会撑出手机壳，这里改成固定尺寸 */
+.phone .blob-1 { width: 340px; height: 340px; left: -110px; top: -90px; }
+.phone .blob-2 { width: 380px; height: 380px; right: -130px; bottom: -140px; }
+.phone .blob-3 { width: 300px; height: 300px; left: 34%; top: 30%; }
+
+/* ---------- 内容滚动区：三个页面共用 ---------- */
+.app-scroll {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 24px 18px 30px;
+}
+
+/* ---------- 页面切换：默认隐藏，激活时淡入上浮 ---------- */
+.page { display: none; }
+
+.page.is-active {
+  display: block;
+  animation: pageIn 0.28s ease both;
+}
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ---------- 底部导航栏：固定在手机壳底部，不随内容滚动 ---------- */
+.tabbar {
+  position: relative;
+  z-index: 20;
+  flex: 0 0 auto;
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+  background: var(--sheet-bg);
+  border-top: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  backdrop-filter: blur(18px) saturate(150%);
+}
+
+.tab-btn {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 0 5px;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: color 0.22s ease, background 0.22s ease, transform 0.16s ease;
+}
+
+.tab-btn:active { transform: scale(0.94); }
+
+.tab-ico { font-size: 21px; line-height: 1; filter: grayscale(1) opacity(0.55); transition: filter 0.22s ease, transform 0.22s ease; }
+
+.tab-btn.is-active {
+  color: var(--accent);
+  background: linear-gradient(180deg, rgba(47, 133, 90, 0.14), rgba(47, 133, 90, 0.03));
+}
+
+.tab-btn.is-active .tab-ico {
+  filter: none;
+  transform: translateY(-1px) scale(1.06);
+}
+
+.tab-btn.is-active .tab-txt { font-weight: 700; }
+
+/* ---------- 抽屉打开时锁住内容区滚动（比锁 body 更准） ---------- */
+body.sheet-open { overflow: hidden; }
+body.sheet-open .app-scroll { overflow: hidden; }
+
+/* ---------- 浮层一律限定在手机壳内：fixed → absolute ---------- */
+.phone .sheet-overlay,
+.phone .modal,
+.phone .breathe-overlay,
+.phone .share-overlay,
+.phone .toast {
+  position: absolute;
+}
+
+/* toast 别压住底部 Tab 栏 */
+.phone .toast { bottom: 96px; }
+
+/* iOS 聚焦自动放大防护：所有输入类控件字号强制 ≥16px */
+.phone input,
+.phone textarea,
+.phone select {
+  font-size: 16px !important;
+}
+
+/* ---------- 🆕 健康金句盲盒 ---------- */
+.quote-card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 18px 0 14px;
+  padding: 14px 40px 14px 14px;
+  border-radius: 18px;
+}
+
+.quote-ico { font-size: 20px; line-height: 1.5; }
+
+.quote-text {
+  margin: 0;
+  min-height: 24px;
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+.quote-text.typing::after {
+  content: '▍';
+  margin-left: 1px;
+  animation: caretBlink 0.8s steps(1) infinite;
+  color: var(--accent);
+}
+
+.quote-refresh {
+  position: absolute;
+  right: 10px;
+  top: 12px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 15px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: transform 0.3s ease, background 0.2s ease;
+  user-select: none;
+}
+
+.quote-refresh:hover { background: var(--glass-inner); }
+.quote-refresh:active { transform: rotate(180deg); }
+
+/* ---------- 🆕 久坐番茄钟 ---------- */
+.pomo-card {
+  margin: 14px 0;
+  padding: 18px 16px;
+  border-radius: 20px;
+}
+
+.pomo-card h2 {
+  margin: 0 0 4px;
+  font-size: 17px;
+  color: var(--ink);
+}
+
+.pomo-cap {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.pomo-display { text-align: center; }
+
+.pomo-time {
+  display: block;
+  font-size: 46px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  transition: color 0.4s ease;
+}
+
+/* 运行中：数字变绿 + 卡片轻微呼吸提示 */
+.pomo-card.is-running .pomo-time { color: var(--accent); }
+.pomo-card.is-done .pomo-time { color: #d4762a; }
+
+.pomo-bar {
+  height: 6px;
+  margin: 12px auto 0;
+  border-radius: 999px;
+  background: var(--ring-track);
+  overflow: hidden;
+}
+
+.pomo-bar-fill {
+  display: block;
+  width: 0%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2f7d5b, #6b46c1);
+  transition: width 0.6s linear;
+}
+
+.pomo-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.pomo-btn {
+  flex: 1 1 0;
+  padding: 13px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2f7d5b, #256749);
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.16s ease, opacity 0.2s ease;
+}
+
+.pomo-btn:active { transform: scale(0.97); }
+.pomo-btn.ghost {
+  background: var(--glass-inner);
+  color: var(--muted);
+  border: 1px solid var(--glass-border);
+  font-weight: 600;
+}
+
+.pomo-state {
+  margin: 12px 0 0;
+  font-size: 12.5px;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* 番茄钟提醒弹窗正文 */
+.pomo-remind-body { padding: 4px 4px 12px; }
+.pomo-remind-big {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--ink);
+}
+.pomo-remind-text {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+
+/* ---------- 🆕 连续打卡天数 ---------- */
+.streak-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 16px;
+  padding: 16px;
+  border-radius: 20px;
+}
+
+.streak-fire { font-size: 34px; line-height: 1; }
+
+.streak-txt { display: flex; flex-direction: column; gap: 2px; }
+
+.streak-txt strong {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1.1;
+}
+
+.streak-txt span { font-size: 13.5px; color: var(--muted); }
+.streak-txt em { font-style: normal; font-weight: 800; color: var(--ink); }
+
+/* 记录页底部的清空按钮 */
+.history-foot { margin-top: 16px; }
+.history-foot .ghost-btn { width: 100%; }
+
+/* ---------- 🆕 我的页 ---------- */
+.me-card {
+  margin: 0 0 14px;
+  padding: 18px 16px;
+  border-radius: 20px;
+}
+
+.me-card h2 {
+  margin: 0 0 10px;
+  font-size: 16.5px;
+  color: var(--ink);
+}
+
+.me-card p {
+  margin: 0 0 10px;
+  font-size: 14px;
+  line-height: 1.85;
+  color: var(--muted);
+}
+
+.me-card p:last-child { margin-bottom: 0; }
+
+.me-card a { color: var(--accent); font-weight: 600; }
+
+.dev-card {
+  background: linear-gradient(135deg, rgba(47, 133, 90, 0.14), rgba(107, 70, 193, 0.08));
+  border-color: rgba(47, 133, 90, 0.35);
+}
+
+.dev-card p { color: var(--ink); opacity: 0.82; }
+
+.me-actions { margin-top: 4px; text-align: center; }
+
+.me-actions .ghost-btn { width: 100%; margin-bottom: 14px; }
+
+.me-version {
+  font-size: 12px;
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+/* ---------- AI 剩余次数 ---------- */
+.ai-quota {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.ai-quota em {
+  font-style: normal;
+  font-weight: 800;
+  color: var(--ai);
+}
+
+/* AI 次数用完：按钮降级为禁用态 */
+.ai-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ---------- 手机上的布局微调（承接旧媒体查询里针对 .app 的规则） ---------- */
+@media (max-width: 480px) {
+  .app-scroll { padding: 20px 16px 28px; }
+  .app-header h1 { font-size: 25px; }
+  .pomo-time { font-size: 42px; }
+}

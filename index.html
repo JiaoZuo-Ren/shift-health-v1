@@ -2,7 +2,8 @@
 <html lang="zh-CN" data-theme="day">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- PWA 移动端视口：禁止双指缩放（iOS Safari 同时依赖 maximum-scale=1） -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>今日活动建议 · 久坐人群健康仪表盘</title>
   <!-- 首屏先按时钟定主题，避免夜间打开时先闪一下亮色 -->
   <script>
@@ -11,8 +12,16 @@
       document.documentElement.setAttribute('data-theme', (h >= 6 && h < 18) ? 'day' : 'night');
     })();
   </script>
-  <link rel="stylesheet" href="style.css?v=18">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f7d5b'/%3E%3Cpath d='M8 17h4l2-6 3 10 2-4h5' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css?v=19">
+  <!-- PWA：添加到主屏幕所需 -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2f7d5b">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="今日活动">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="icon" href="icon-192.png">
   <!-- Open Graph：分享到微信/社交平台时展示的标题、简介和缩略图 -->
   <meta property="og:type" content="website">
   <meta property="og:locale" content="zh_CN">
@@ -24,248 +33,349 @@
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="今日活动建议：久坐人群的数据翻译">
-  <!-- Twitter / X 卡片 -->
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="今日活动建议 — 告诉你今天该做什么、不该做什么">
-  <meta name="twitter:description" content="输入昨日久坐、睡眠、心率和步数，按固定规则给出今天最合适的行动安排。">
-  <meta name="twitter:image" content="https://jiaozuo-ren.github.io/shift-health-v1/og-preview.png">
   <!-- 提示：og:url 与 og:image 里的域名/路径，部署后请按实际线上地址更新 -->
 </head>
 <body>
-  <!-- 动态流光背景：三个模糊色块缓慢漂移，白天浅色 / 夜间深蓝紫由 CSS 变量控制 -->
-  <div class="aurora" aria-hidden="true">
-    <span class="blob blob-1"></span>
-    <span class="blob blob-2"></span>
-    <span class="blob blob-3"></span>
-  </div>
 
-  <!-- 右上角：毛玻璃历史记录悬浮按钮 -->
-  <button type="button" id="historyBtn" class="float-history" aria-label="打开历史记录">📅 历史记录</button>
+  <!-- ============ 手机壳：手机上铺满全屏；PC 上居中成 430px 宽的模拟器，暗色遮罩 ============ -->
+  <div class="phone-shell">
+    <div class="phone" id="phone">
 
-  <main class="app">
-    <header class="app-header">
-      <p class="mode-status" id="modeStatus">当前模式：久坐上班族</p>
-      <h1>今日活动建议</h1>
-      <p id="appDesc">输入昨日作息数据，为你生成今日最合适的行动安排。</p>
-      <p class="app-sub" id="appSub">用昨日的账单，定今日的预算：昨晚怎么睡、昨天坐多久，决定今天怎么动。</p>
-      <button type="button" id="modeSwitchBtn" class="mode-switch-btn">切换人群模式</button>
-      <p class="mode-hint">点一下切换模式</p>
-    </header>
-
-    <!-- 首页只保留输入表单，结果全部放进底部抽屉 -->
-    <section class="glass form-card" aria-label="输入数据">
-      <div class="field" id="fieldSedentary">
-        <label for="sedentary">昨日久坐时长（小时）</label>
-        <input type="number" id="sedentary" inputmode="decimal" placeholder="例如 7" min="0" max="24" step="0.1" required>
-      </div>
-      <div class="field">
-        <label for="sleep">昨晚睡眠时长（小时）</label>
-        <input type="number" id="sleep" inputmode="decimal" placeholder="例如 6.5" min="0" max="24" step="0.1" required>
-      </div>
-      <div class="field">
-        <label for="hr">今晨静息心率（次/分钟）</label>
-        <input type="number" id="hr" inputmode="numeric" placeholder="例如 65" min="30" max="250" step="1">
-        <p class="field-hint">不知道就留空</p>
-      </div>
-      <div class="field">
-        <label for="steps">昨日步数（步）</label>
-        <input type="number" id="steps" inputmode="numeric" placeholder="例如 6000" min="0" max="100000" step="1" required>
-      </div>
-      <div class="demo-row">
-        <button type="button" id="demoBtn" class="demo-btn">一键填入示例数据，立刻看看效果</button>
-      </div>
-      <button type="button" id="generateBtn" class="primary-btn">生成今天的建议</button>
-      <p id="formError" class="form-error" role="alert" hidden></p>
-    </section>
-
-    <footer class="app-footer">
-      <p>本工具只做固定规则判断，不构成医疗建议。</p>
-      <p class="last-test" id="lastTest" hidden></p>
-      <p><a href="about.html">关于这个工具</a></p>
-      <p class="feedback">觉得有用？有问题或建议？联系我：<a href="mailto:2179369131@qq.com">2179369131@qq.com</a></p>
-    </footer>
-
-    <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  </main>
-
-  <!-- ================= 结果抽屉：遮罩 + 从底部滑出的面板 ================= -->
-  <div id="resultOverlay" class="sheet-overlay" aria-hidden="true" hidden>
-    <div class="sheet-backdrop" data-sheet-close="1"></div>
-
-    <section id="result" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" aria-live="polite" tabindex="-1">
-      <!-- 顶部小横条：手机底部指示条的感觉，点它也能关 -->
-      <div class="sheet-grip" id="sheetGrip" aria-hidden="true"><span></span></div>
-
-      <!-- 固定不动的标题栏，滚动时始终能点关闭 -->
-      <div class="sheet-head">
-        <h2 id="sheetTitle">今日建议</h2>
-        <button type="button" id="resultClose" class="icon-btn" aria-label="关闭结果">×</button>
+      <!-- 动态流光背景：只在手机壳内部漂移 -->
+      <div class="aurora" aria-hidden="true">
+        <span class="blob blob-1"></span>
+        <span class="blob blob-2"></span>
+        <span class="blob blob-3"></span>
       </div>
 
-      <div class="sheet-body" id="sheetBody">
+      <!-- 内容区：三个页面共用一个滚动容器 -->
+      <main class="app-scroll" id="appScroll">
 
-        <!-- 巨大的动态环形活力值 -->
-        <div class="panel ring-panel">
-          <div class="ring-wrap">
-            <svg class="ring" viewBox="0 0 220 220" role="img" aria-label="今日活力值环形进度">
-              <circle class="ring-track" cx="110" cy="110" r="92"></circle>
-              <circle class="ring-bar" id="ringBar" cx="110" cy="110" r="92"></circle>
-            </svg>
-            <div class="ring-center">
-              <span class="ring-score" id="vitalityScore">--</span>
-              <span class="ring-label">今日活力值</span>
+        <!-- ==================== 页面一：🏠 首页（核心工具） ==================== -->
+        <section class="page page-home is-active" id="pageHome">
+
+          <header class="app-header">
+            <p class="mode-status" id="modeStatus">当前模式：久坐上班族</p>
+            <h1>今日活动建议</h1>
+            <p id="appDesc">输入昨日作息数据，为你生成今日最合适的行动安排。</p>
+            <p class="app-sub" id="appSub">用昨日的账单，定今日的预算：昨晚怎么睡、昨天坐多久，决定今天怎么动。</p>
+            <button type="button" id="modeSwitchBtn" class="mode-switch-btn">切换人群模式</button>
+            <p class="mode-hint">点一下切换模式</p>
+          </header>
+
+          <!-- 🆕 健康金句盲盒：每次刷新随机一句，打字机效果，纯本地不花钱 -->
+          <div class="glass quote-card" id="quoteCard" aria-label="今日健康金句">
+            <span class="quote-ico" aria-hidden="true">💡</span>
+            <p class="quote-text" id="quoteText" aria-live="polite"></p>
+            <span class="quote-refresh" id="quoteRefresh" title="换一句" role="button" tabindex="0" aria-label="换一句金句">↻</span>
+          </div>
+
+          <!-- 输入表单：结果全部放进底部抽屉 -->
+          <section class="glass form-card" aria-label="输入数据">
+            <div class="field" id="fieldSedentary">
+              <label for="sedentary">昨日久坐时长（小时）</label>
+              <input type="number" id="sedentary" inputmode="decimal" placeholder="例如 7" min="0" max="24" step="0.1" required>
             </div>
-            <!-- 动态情绪小精灵：随分数换图标和动画 -->
-            <span class="ring-emoji" id="ringEmoji" aria-hidden="true">🙂</span>
+            <div class="field">
+              <label for="sleep">昨晚睡眠时长（小时）</label>
+              <input type="number" id="sleep" inputmode="decimal" placeholder="例如 6.5" min="0" max="24" step="0.1" required>
+            </div>
+            <div class="field">
+              <label for="hr">今晨静息心率（次/分钟）</label>
+              <input type="number" id="hr" inputmode="numeric" placeholder="例如 65" min="30" max="250" step="1">
+              <p class="field-hint">不知道就留空</p>
+            </div>
+            <div class="field">
+              <label for="steps">昨日步数（步）</label>
+              <input type="number" id="steps" inputmode="numeric" placeholder="例如 6000" min="0" max="100000" step="1" required>
+            </div>
+            <div class="demo-row">
+              <button type="button" id="demoBtn" class="demo-btn">一键填入示例数据，立刻看看效果</button>
+            </div>
+            <button type="button" id="generateBtn" class="primary-btn">生成今天的建议</button>
+            <p id="formError" class="form-error" role="alert" hidden></p>
+          </section>
+
+          <!-- 🆕 久坐番茄钟：50 分钟专注计时，到点提醒起来活动 -->
+          <div class="glass pomo-card" id="pomoCard">
+            <div class="pomo-head">
+              <h2>🍅 久坐番茄钟</h2>
+              <p class="pomo-cap">每坐 50 分钟，就该起来活动 2 分钟。</p>
+            </div>
+            <div class="pomo-display">
+              <span class="pomo-time" id="pomoTime">50:00</span>
+              <div class="pomo-bar"><span class="pomo-bar-fill" id="pomoBar"></span></div>
+            </div>
+            <div class="pomo-actions">
+              <button type="button" id="pomoBtn" class="pomo-btn">开始专注</button>
+              <button type="button" id="pomoReset" class="pomo-btn ghost">重置</button>
+            </div>
+            <p class="pomo-state" id="pomoState">还没开始 · 计时期间离开页面也会继续</p>
           </div>
-          <p class="ring-tip" id="ringTip">满分 100 分，四项指标各扣 20 分</p>
-        </div>
 
-        <!-- 模块一：状态诊断 -->
-        <div class="panel">
-          <h2><span class="panel-ico">💡</span>状态诊断</h2>
-          <p class="risk-badge" id="riskBadge"></p>
-          <p class="cause" id="causeExplain"></p>
-          <p class="panel-text" id="activityAdvice"></p>
-          <p class="taboo" id="tabooAdvice"></p>
-        </div>
+          <footer class="app-footer">
+            <p>本工具只做固定规则判断，不构成医疗建议。</p>
+            <p class="last-test" id="lastTest" hidden></p>
+            <p><a href="about.html">关于这个工具</a></p>
+          </footer>
 
-        <!-- 模块二：运动与拉伸处方 -->
-        <div class="panel">
-          <h2><span class="panel-ico">🏃</span>运动与拉伸处方</h2>
-          <p class="panel-text" id="actionAdvice"></p>
-          <p class="panel-text sub" id="microAdvice"></p>
-        </div>
+        </section>
 
-        <!-- 模块三：饮食与营养干预 -->
-        <div class="panel">
-          <h2><span class="panel-ico">🥗</span>饮食与营养干预</h2>
-          <p class="panel-text" id="nutritionAdvice"></p>
-          <p class="panel-text sub" id="hydrationAdvice"></p>
-        </div>
+        <!-- ==================== 页面二：📊 记录（数据看板） ==================== -->
+        <section class="page page-history" id="pageHistory">
 
-        <!-- 今天最该做的一件事 -->
-        <div class="panel key-panel">
-          <h2><span class="panel-ico">🎯</span>今天最该做的一件事</h2>
-          <p class="key-text" id="keyAdvice"></p>
-        </div>
+          <header class="app-header">
+            <h1>📊 健康记录</h1>
+            <p class="app-sub">最近 7 次的记录都保存在这台手机上，点「回填」能一键重新生成。</p>
+          </header>
 
-        <div class="actions">
-          <button type="button" id="copyBtn" class="ghost-btn">📋 复制建议</button>
-          <button type="button" id="shareBtn" class="ghost-btn">生成今日数据卡片</button>
-        </div>
+          <!-- 🆕 连续打卡天数：按生成建议的日期统计 -->
+          <div class="glass streak-card" id="streakCard">
+            <span class="streak-fire" aria-hidden="true">🔥</span>
+            <div class="streak-txt">
+              <strong id="streakDays">0</strong>
+              <span>你已连续关注健康 <em id="streakDaysInline">0</em> 天</span>
+            </div>
+          </div>
 
-      </div>
+          <div id="historyList" class="history-list"></div>
 
-      <!-- 底部固定操作栏：AI 私教 / 深呼吸两个平行入口。
-           固定在面板底部，不占首屏，抽屉一打开第一眼看到的仍是建议本身。 -->
-      <div class="sheet-dock">
-        <button type="button" id="aiEntryBtn" class="dock-btn dock-ai">
-          <span class="dock-ico" aria-hidden="true">🤖</span>
-          <span class="dock-txt"><strong>AI 私教</strong><em>结合昨天补两句</em></span>
+          <div class="history-foot">
+            <button type="button" id="historyClear" class="ghost-btn danger">🗑️ 清空记录</button>
+          </div>
+
+        </section>
+
+        <!-- ==================== 页面三：👤 我的（个人中心） ==================== -->
+        <section class="page page-me" id="pageMe">
+
+          <header class="app-header">
+            <h1>👤 我的</h1>
+          </header>
+
+          <!-- 🆕 开发者的话 -->
+          <div class="glass me-card dev-card">
+            <h2>👋 开发者的话</h2>
+            <p>你好，我是一名大四学生。做这个小工具的起点很简单：我自己常年久坐写代码，作息一乱，白天整个人都是懵的。网上能查到的健康知识又多又杂，看完更不知道"今天到底该干嘛"。</p>
+            <p>所以我想把那些复杂的指标翻译成一句人话：今天该动还是该歇。所有建议都来自一张写死的规则表，不猜、不编、不吓唬人，也没有广告和追踪。</p>
+            <p>这是我毕业前做的第一个完整的产品。如果你用着觉得有一点点用，就是对我最大的鼓励。</p>
+          </div>
+
+          <div class="glass me-card">
+            <h2>📮 联系我</h2>
+            <p>觉得有用？有问题或建议？<a href="mailto:2179369131@qq.com">2179369131@qq.com</a></p>
+            <p>项目开源在 GitHub：<a href="https://github.com/jiaozuo-ren/shift-health-v1" target="_blank" rel="noopener">github.com/jiaozuo-ren</a></p>
+          </div>
+
+          <div class="glass me-card">
+            <h2>⚠️ 免责声明</h2>
+            <p>本工具只做固定规则判断，输出内容仅为一般性的活动建议，不构成任何医疗诊断或治疗意见。如果你有基础疾病、正在服药，或出现胸痛、头晕、气短等明显不适，请及时就医，不要依赖本工具。</p>
+          </div>
+
+          <div class="me-actions">
+            <button type="button" id="clearHistoryBtn" class="ghost-btn danger">🗑️ 清空历史记录</button>
+            <p class="me-version">今日活动建议 · v1.0 · PWA</p>
+          </div>
+
+        </section>
+
+      </main>
+
+      <!-- 底部导航栏：固定在手机壳底部，安全区留白防 iPhone 小黑条遮挡 -->
+      <nav class="tabbar" id="tabbar" aria-label="底部导航">
+        <button type="button" class="tab-btn is-active" data-tab="home" aria-label="首页">
+          <span class="tab-ico" aria-hidden="true">🏠</span><span class="tab-txt">首页</span>
         </button>
-        <button type="button" id="breatheBtn" class="dock-btn dock-breathe">
-          <span class="dock-ico" aria-hidden="true">🧘</span>
-          <span class="dock-txt"><strong>深呼吸</strong><em>跟着球放松 60 秒</em></span>
+        <button type="button" class="tab-btn" data-tab="history" aria-label="记录">
+          <span class="tab-ico" aria-hidden="true">📊</span><span class="tab-txt">记录</span>
         </button>
-      </div>
-    </section>
-  </div>
+        <button type="button" class="tab-btn" data-tab="me" aria-label="我的">
+          <span class="tab-ico" aria-hidden="true">👤</span><span class="tab-txt">我的</span>
+        </button>
+      </nav>
 
-  <!-- ================= AI 私教抽屉：在结果抽屉之上再滑出的一层 ================= -->
-  <div id="aiOverlay" class="sheet-overlay sheet-overlay--ai" aria-hidden="true" hidden>
-    <div class="sheet-backdrop" data-ai-close="1"></div>
+      <!-- 全局提示 -->
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    <section id="aiSheet" class="sheet sheet--ai" role="dialog" aria-modal="true" aria-labelledby="aiSheetTitle" tabindex="-1">
-      <div class="sheet-grip" id="aiGrip" aria-hidden="true"><span></span></div>
+      <!-- ============ 结果抽屉：遮罩 + 从底部滑出的面板 ============ -->
+      <div id="resultOverlay" class="sheet-overlay" aria-hidden="true" hidden>
+        <div class="sheet-backdrop" data-sheet-close="1"></div>
 
-      <div class="sheet-head">
-        <h2 id="aiSheetTitle">🤖 AI 私教</h2>
-        <button type="button" id="aiClose" class="icon-btn" aria-label="关闭 AI 私教">×</button>
-      </div>
+        <section id="result" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" aria-live="polite" tabindex="-1">
+          <!-- 顶部小横条：手机底部指示条的感觉，点它也能关 -->
+          <div class="sheet-grip" id="sheetGrip" aria-hidden="true"><span></span></div>
 
-      <div class="sheet-body" id="aiSheetBody">
-
-        <!-- AI 私教：按钮 + 隐藏卡片 + 追问输入框 -->
-        <div class="panel ai-section">
-          <p class="panel-cap">想听人话版解释？让教练结合你昨天的数据补两句。仅供参考，不是诊断。</p>
-          <button type="button" id="aiBtn" class="ai-btn">🤖 听听AI私教怎么说</button>
-          <div id="ai-card" class="ai-card" hidden>
-            <p class="ai-title">🤖 AI 私教补充建议</p>
-            <div class="ai-content" id="aiReply" aria-live="polite"></div>
-            <button type="button" id="aiRetryBtn" class="ai-retry" hidden>↻ 再试一次</button>
-            <form class="ai-ask" id="aiAskForm" autocomplete="off">
-              <input type="text" id="aiQuestion" placeholder="还想追问点什么？例如：晚上能跑步吗" maxlength="120">
-              <button type="submit" id="aiAskBtn">追问</button>
-            </form>
+          <div class="sheet-head">
+            <h2 id="sheetTitle">今日建议</h2>
+            <button type="button" id="resultClose" class="icon-btn" aria-label="关闭结果">×</button>
           </div>
 
-          <!-- 不花钱的情绪彩蛋：本地数组随机，不调用接口 -->
-          <div class="fortune">
-            <button type="button" id="fortuneBtn" class="fortune-btn">🎲 抽一句今日能量签</button>
-            <p class="fortune-text" id="fortuneText" aria-live="polite"></p>
+          <div class="sheet-body" id="sheetBody">
+
+            <!-- 巨大的动态环形活力值 -->
+            <div class="panel ring-panel">
+              <div class="ring-wrap">
+                <svg class="ring" viewBox="0 0 220 220" role="img" aria-label="今日活力值环形进度">
+                  <circle class="ring-track" cx="110" cy="110" r="92"></circle>
+                  <circle class="ring-bar" id="ringBar" cx="110" cy="110" r="92"></circle>
+                </svg>
+                <div class="ring-center">
+                  <span class="ring-score" id="vitalityScore">--</span>
+                  <span class="ring-label">今日活力值</span>
+                </div>
+                <!-- 动态情绪小精灵：随分数换图标和动画 -->
+                <span class="ring-emoji" id="ringEmoji" aria-hidden="true">🙂</span>
+              </div>
+              <p class="ring-tip" id="ringTip">满分 100 分，四项指标各扣 20 分</p>
+            </div>
+
+            <!-- 模块一：状态诊断 -->
+            <div class="panel">
+              <h2><span class="panel-ico">💡</span>状态诊断</h2>
+              <p class="risk-badge" id="riskBadge"></p>
+              <p class="cause" id="causeExplain"></p>
+              <p class="panel-text" id="activityAdvice"></p>
+              <p class="taboo" id="tabooAdvice"></p>
+            </div>
+
+            <!-- 模块二：运动与拉伸处方 -->
+            <div class="panel">
+              <h2><span class="panel-ico">🏃</span>运动与拉伸处方</h2>
+              <p class="panel-text" id="actionAdvice"></p>
+              <p class="panel-text sub" id="microAdvice"></p>
+            </div>
+
+            <!-- 模块三：饮食与营养干预 -->
+            <div class="panel">
+              <h2><span class="panel-ico">🥗</span>饮食与营养干预</h2>
+              <p class="panel-text" id="nutritionAdvice"></p>
+              <p class="panel-text sub" id="hydrationAdvice"></p>
+            </div>
+
+            <!-- 今天最该做的一件事 -->
+            <div class="panel key-panel">
+              <h2><span class="panel-ico">🎯</span>今天最该做的一件事</h2>
+              <p class="key-text" id="keyAdvice"></p>
+            </div>
+
+            <div class="actions">
+              <button type="button" id="copyBtn" class="ghost-btn">📋 复制建议</button>
+              <button type="button" id="shareBtn" class="ghost-btn">生成今日数据卡片</button>
+            </div>
+
+          </div>
+
+          <!-- 底部固定操作栏：AI 私教 / 深呼吸两个平行入口 -->
+          <div class="sheet-dock">
+            <button type="button" id="aiEntryBtn" class="dock-btn dock-ai">
+              <span class="dock-ico" aria-hidden="true">🤖</span>
+              <span class="dock-txt"><strong>AI 私教</strong><em>结合昨天补两句</em></span>
+            </button>
+            <button type="button" id="breatheBtn" class="dock-btn dock-breathe">
+              <span class="dock-ico" aria-hidden="true">🧘</span>
+              <span class="dock-txt"><strong>深呼吸</strong><em>跟着球放松 60 秒</em></span>
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <!-- ============ AI 私教抽屉：在结果抽屉之上再滑出的一层 ============ -->
+      <div id="aiOverlay" class="sheet-overlay sheet-overlay--ai" aria-hidden="true" hidden>
+        <div class="sheet-backdrop" data-ai-close="1"></div>
+
+        <section id="aiSheet" class="sheet sheet--ai" role="dialog" aria-modal="true" aria-labelledby="aiSheetTitle" tabindex="-1">
+          <div class="sheet-grip" id="aiGrip" aria-hidden="true"><span></span></div>
+
+          <div class="sheet-head">
+            <h2 id="aiSheetTitle">🤖 AI 私教</h2>
+            <button type="button" id="aiClose" class="icon-btn" aria-label="关闭 AI 私教">×</button>
+          </div>
+
+          <div class="sheet-body" id="aiSheetBody">
+            <div class="panel ai-section">
+              <p class="panel-cap">想听人话版解释？让教练结合你昨天的数据补两句。仅供参考，不是诊断。</p>
+              <button type="button" id="aiBtn" class="ai-btn">🤖 听听AI私教怎么说</button>
+              <p class="ai-quota" id="aiQuota">今日剩余咨询次数：3 / 3</p>
+              <div id="ai-card" class="ai-card" hidden>
+                <p class="ai-title">🤖 AI 私教补充建议</p>
+                <div class="ai-content" id="aiReply" aria-live="polite"></div>
+                <button type="button" id="aiRetryBtn" class="ai-retry" hidden>↻ 再试一次</button>
+                <form class="ai-ask" id="aiAskForm" autocomplete="off">
+                  <input type="text" id="aiQuestion" placeholder="还想追问点什么？例如：晚上能跑步吗" maxlength="120">
+                  <button type="submit" id="aiAskBtn">追问</button>
+                </form>
+              </div>
+
+              <!-- 不花钱的情绪彩蛋：本地数组随机，不调用接口 -->
+              <div class="fortune">
+                <button type="button" id="fortuneBtn" class="fortune-btn">🎲 抽一句今日能量签</button>
+                <p class="fortune-text" id="fortuneText" aria-live="polite"></p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- 呼吸放松覆盖层：跟着圆球吸气 / 憋气 / 呼气，60 秒自动结束 -->
+      <div id="breatheOverlay" class="breathe-overlay" aria-hidden="true" hidden>
+        <div class="breathe-stage">
+          <div class="breathe-ball" id="breatheBall">
+            <span class="breathe-phase" id="breathePhase">吸气</span>
+          </div>
+          <p class="breathe-time" id="breatheTime">还剩 60 秒</p>
+          <p class="breathe-tip">吸 4 秒 · 憋 4 秒 · 呼 4 秒</p>
+        </div>
+        <button type="button" id="breatheClose" class="breathe-close">结束放松</button>
+      </div>
+
+      <!-- 分享卡片：离屏完成截图下载 → 弹出预览 → 手动关闭 -->
+      <div id="shareOverlay" class="share-overlay" aria-hidden="true">
+        <button type="button" id="shareClose" class="share-close" aria-label="关闭预览">×</button>
+        <div id="shareCard" class="share-card">
+          <div class="share-card-inner">
+            <p class="share-mode" id="shareMode"></p>
+            <p class="share-title">今日活动建议</p>
+            <div class="share-vitality">
+              <span class="share-score" id="shareScore">--</span>
+              <span class="share-score-unit">/ 100</span>
+            </div>
+            <p class="share-vitality-label">今日活力值</p>
+            <p class="share-risk" id="shareRisk"></p>
+            <div class="share-block">
+              <h3>活动建议</h3>
+              <p id="shareAdvice"></p>
+            </div>
+            <div class="share-block">
+              <h3>今天最该做的一件事</h3>
+              <p id="shareKey"></p>
+            </div>
+            <p class="share-date" id="shareDate"></p>
+            <p class="share-url" id="shareUrl"></p>
           </div>
         </div>
-
       </div>
-    </section>
-  </div>
 
-  <!-- 历史记录弹窗：毛玻璃遮罩 + 居中磨砂卡片 -->
-  <div id="historyModal" class="modal" aria-hidden="true">
-    <div class="modal-backdrop" data-close="1"></div>
-    <div class="modal-card glass" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
-      <div class="modal-head">
-        <h2 id="historyTitle">📅 历史记录</h2>
-        <button type="button" id="historyClose" class="icon-btn" aria-label="关闭历史记录">×</button>
-      </div>
-      <div id="historyList" class="history-list"></div>
-      <div class="modal-foot">
-        <button type="button" id="historyClear" class="ghost-btn danger">🗑️ 清空记录</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 呼吸放松覆盖层：跟着圆球吸气 / 憋气 / 呼气，60 秒自动结束 -->
-  <div id="breatheOverlay" class="breathe-overlay" aria-hidden="true" hidden>
-    <div class="breathe-stage">
-      <div class="breathe-ball" id="breatheBall">
-        <span class="breathe-phase" id="breathePhase">吸气</span>
-      </div>
-      <p class="breathe-time" id="breatheTime">还剩 60 秒</p>
-      <p class="breathe-tip">吸 4 秒 · 憋 4 秒 · 呼 4 秒</p>
-    </div>
-    <button type="button" id="breatheClose" class="breathe-close">结束放松</button>
-  </div>
-
-  <!-- 分享卡片：离屏完成截图下载 → 弹出预览 → 手动关闭 -->
-  <div id="shareOverlay" class="share-overlay" aria-hidden="true">
-    <button type="button" id="shareClose" class="share-close" aria-label="关闭预览">×</button>
-    <div id="shareCard" class="share-card">
-      <div class="share-card-inner">
-        <p class="share-mode" id="shareMode"></p>
-        <p class="share-title">今日活动建议</p>
-        <div class="share-vitality">
-          <span class="share-score" id="shareScore">--</span>
-          <span class="share-score-unit">/ 100</span>
+      <!-- 🆕 番茄钟完成提醒弹窗 -->
+      <div id="pomodoroOverlay" class="modal" aria-hidden="true">
+        <div class="modal-backdrop" data-pomo-close="1"></div>
+        <div class="modal-card glass" role="dialog" aria-modal="true" aria-labelledby="pomoTitle">
+          <div class="modal-head">
+            <h2 id="pomoTitle">🍅 时间到！</h2>
+          </div>
+          <div class="pomo-remind-body">
+            <p class="pomo-remind-big">起来活动 2 分钟吧</p>
+            <p class="pomo-remind-text">接杯水、走两步、拉伸一下肩颈。别小看这两分钟——它比下班后硬练一小时更管用。</p>
+          </div>
+          <div class="modal-foot">
+            <button type="button" id="pomodoroOk" class="primary-btn">好的，这就起来</button>
+          </div>
         </div>
-        <p class="share-vitality-label">今日活力值</p>
-        <p class="share-risk" id="shareRisk"></p>
-        <div class="share-block">
-          <h3>活动建议</h3>
-          <p id="shareAdvice"></p>
-        </div>
-        <div class="share-block">
-          <h3>今天最该做的一件事</h3>
-          <p id="shareKey"></p>
-        </div>
-        <p class="share-date" id="shareDate"></p>
-        <p class="share-url" id="shareUrl"></p>
       </div>
-    </div>
-  </div>
+
+    </div><!-- /phone -->
+  </div><!-- /phone-shell -->
 
   <script src="html2canvas.min.js" onerror="this.onerror=null;this.src='https://fastly.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js'"></script>
-  <script src="script.js?v=18"></script>
+  <script src="script.js?v=19"></script>
 </body>
 </html>
