@@ -688,3 +688,58 @@ button:disabled {
   font-weight: 700;
   color: #ffd98a;
 }
+
+/* ================= AI 私教模块 ================= */
+.ai-section {
+  margin-top: 4px;
+}
+
+.ai-btn {
+  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(90, 103, 216, 0.3);
+}
+
+.ai-btn:hover {
+  background: linear-gradient(135deg, #4c51bf 0%, #553c9a 100%);
+  box-shadow: 0 3px 12px rgba(90, 103, 216, 0.35);
+}
+
+.ai-btn:disabled {
+  background: #8f9bc4;
+  box-shadow: none;
+  cursor: wait;
+}
+
+.ai-card {
+  margin-top: 16px;
+  padding: 18px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  border: 1px solid #c9d4f0;
+}
+
+.ai-title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #4c51bf;
+}
+
+.ai-content {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--ink);
+  white-space: pre-wrap; /* 保留 AI 返回的换行 */
+  word-break: break-word;
+}
+
+:root[data-theme="dark"] .ai-card {
+  background: #252a47;
+  border-color: #3d4470;
+}
+
+:root[data-theme="dark"] .ai-title {
+  color: #a3b0f0;
+}
